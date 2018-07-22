@@ -50,7 +50,7 @@ public class WebServerIT {
 
         // App info
         assertThat(body).contains("knox_exporter_scrape_duration_seconds");
-        assertThat(body).contains("knox_exporter_app_info{appName=\"knox_exporter\",appVersion=\"<will be replaced>\",buildTime=\"<will be replaced>\",buildScmVersion=\"<will be replaced>\",buildScmBranch=\"<will be replaced>\",} 1.0");
+        assertThat(body).contains("knox_exporter_app_info{appName=\"knox_exporter\",appVersion=");
         assertThat(body).contains("knox_exporter_scrape_errors_total 0.0");
         assertThat(body).contains("knox_exporter_scrape_requests_total 2.0");
 
@@ -67,11 +67,11 @@ public class WebServerIT {
         assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.5\",} 0.");
         assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.95\",} 0.");
         assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.99\",} 0.");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"webhdfs_status\",} 2.0");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"webhdfs_status\",} 0.");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"webhdfs_status\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"webhdfs_status\",}");
 
         // knox_exporter_ops_errors_total
-        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",} 2.0");
+        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",}");
     }
 
     @Test
