@@ -76,7 +76,7 @@ See [issues](../../issues)
 
 ### Example home output
 
-![Home output](home.png)
+![Home output](apache_knox_exporter_home.png)
 
 ### Example metrics
 Here's an example output:
