@@ -5,6 +5,7 @@ Prometheus Apache Knox Exporter
 
 A black box [Apache Knox](http://knox.apache.org) exporter for [Prometheus](https://prometheus.io/) supporting
 * WebHDFS status 
+* Hive query
     
 The exporter collects 
 * error count 
@@ -40,6 +41,11 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   
   # WebHDFS STATUS call directory or file path
   webHdfStatusPath : '/'
+  
+  # Hive JDBC URL
+  hiveJdbcUrl: 'jdbc:hive://localhost:10000/default'
+  # Hive Query
+  hiveQuery: 'SELECT current_database()'
   ```
  
 * Run the exporter

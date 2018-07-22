@@ -38,6 +38,8 @@ public class HomePageServlet extends HttpServlet {
                 + "<li>Knox gateway URL : ").append(knoxGatewayUrl).append("</li>"
                 + "<li>username : ").append(config.getUsername()).append("</li>"
                 + "<li>webHdfStatusPath : ").append(config.getWebHdfStatusPath()).append("</li>"
+                + "<li>hiveJdbcUrl : ").append(config.getHiveJdbcUrl()).append("</li>"
+                + "<li>hiveQuery : ").append(config.getHiveQuery()).append("</li>"
                 + "</ul></body>\n"
                 + "</html>");
         resp.setContentType("text/html");

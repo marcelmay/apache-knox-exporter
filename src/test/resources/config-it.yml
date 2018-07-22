@@ -5,3 +5,8 @@ password : '***'
 
 # WebHDFS STATUS call directory or file path
 webHdfStatusPath : '/'
+
+# Hive JDBC URL
+hiveJdbcUrl: 'jdbc:hive://localhost:10000/default'
+# Hive Query
+hiveQuery: 'SELECT current_database()'

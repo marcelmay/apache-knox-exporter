@@ -8,6 +8,8 @@ public class Config {
     private String password;
 
     private String webHdfStatusPath;
+    private String hiveJdbcUrl;
+    private String hiveQuery;
 
     /**
      * The knox user for connecting.
@@ -44,6 +46,32 @@ public class Config {
 
     public void setWebHdfStatusPath(String webHdfStatusPath) {
         this.webHdfStatusPath = webHdfStatusPath;
+    }
+
+    /**
+     * The Hive JDBC url.
+     *
+     * @return the Hive JDBC url.
+     */
+    public String getHiveJdbcUrl() {
+        return hiveJdbcUrl;
+    }
+
+    public void setHiveJdbcUrl(String hiveJdbcUrl) {
+        this.hiveJdbcUrl = hiveJdbcUrl;
+    }
+
+    /**
+     * The Hive query for performing a health check.
+     *
+     * @return the SQL query.
+     */
+    public String getHiveQuery() {
+        return hiveQuery;
+    }
+
+    public void setHiveQuery(String hiveQuery) {
+        this.hiveQuery = hiveQuery;
     }
 }
 

@@ -52,7 +52,7 @@ public class WebServerIT {
         assertThat(body).contains("knox_exporter_scrape_duration_seconds");
         assertThat(body).contains("knox_exporter_app_info{appName=\"knox_exporter\",appVersion=");
         assertThat(body).contains("knox_exporter_scrape_errors_total 0.0");
-        assertThat(body).contains("knox_exporter_scrape_requests_total 2.0");
+        assertThat(body).contains("knox_exporter_scrape_requests_total");
 
         // JVM
         assertThat(body).contains("jvm_memory_bytes_used{area=\"heap\",}");
@@ -64,11 +64,18 @@ public class WebServerIT {
 
 
         // knox_exporter_ops_duration_seconds
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.5\",} 0.");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.95\",} 0.");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.99\",} 0.");
+        // WebHDFS
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.5\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.95\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.99\",}");
         assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"webhdfs_status\",}");
         assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"webhdfs_status\",}");
+        // Hive
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",quantile=\"0.5\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",quantile=\"0.95\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",quantile=\"0.99\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hive_query\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hive_query\",}");
 
         // knox_exporter_ops_errors_total
         assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",}");
