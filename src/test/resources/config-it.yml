@@ -1,0 +1,7 @@
+# User for connecting to Knox
+username : 'foo'
+# Password for authenticating user
+password : '***'
+
+# WebHDFS STATUS call directory or file path
+webHdfStatusPath : '/'
