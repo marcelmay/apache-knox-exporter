@@ -5,6 +5,8 @@ import java.net.InetSocketAddress;
 
 import io.prometheus.client.exporter.MetricsServlet;
 import io.prometheus.client.hotspot.MemoryPoolsExports;
+import org.apache.log4j.Level;
+import org.apache.log4j.spi.RootLogger;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -43,9 +45,12 @@ public class WebServer {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
-            System.err.println("Usage: WebServer <hostname> <port> <knox gateway url> <yml configuration file>"); // NOSONAR
+            System.out.println("Usage: WebServer [-Dlog.level=[WARN|INFO|DEBUG]] <hostname> <port> <knox gateway url> <yml configuration file>"); // NOSONAR
+            System.out.println();
             System.exit(1);
         }
+
+        RootLogger.getRootLogger().setLevel(Level.toLevel(System.getProperty("log.level"), Level.INFO));
 
         Config config;
         try (FileReader reader = new FileReader(args[3])) {

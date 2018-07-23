@@ -61,9 +61,11 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
 * Run the exporter
   ```
     > java -jar knox-exporter-<VERSION>.jar
-    Usage: WebServer <hostname> <port> <knox gateway url> <yml configuration file>
+    Usage: WebServer [-Dlog.level=[WARN|INFO|DEBUG]] <hostname> <port> <knox gateway url> <yml configuration file>
   ```
-  Example including JVM opts
+  Note: Log level INFO is the default
+
+  Example including JVM opts:
   ```
   > java -Xmx256m -server \
          -jar knox-exporter-1.0-SNAPSHOT.jar \
