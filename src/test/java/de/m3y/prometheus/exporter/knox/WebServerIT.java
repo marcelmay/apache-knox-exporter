@@ -16,7 +16,7 @@ import org.yaml.snakeyaml.Yaml;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class WebServerIT {
-    private static Server server;
+    private static WebServer webServer;
     private static String exporterBaseUrl;
     private static OkHttpClient client;
 
@@ -28,16 +28,17 @@ public class WebServerIT {
             config = new Yaml().loadAs(reader, Config.class);
         }
 
-        server = new WebServer().configure(config, "localhost", 7772,
-                "http://localhost:8080/gateway/default").start();
+        webServer = new WebServer().configure(config, "localhost", 7772,
+                "http://localhost:8080/gateway/default");
+        webServer.start();
         exporterBaseUrl = "http://localhost:7772";
         client = new OkHttpClient();
     }
 
     @AfterClass
     public static void tearDown() throws Exception {
-        if (null != server) {
-            server.stop();
+        if (null != webServer) {
+            webServer.shutdown();
         }
     }
 

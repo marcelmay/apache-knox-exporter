@@ -15,10 +15,11 @@ import org.yaml.snakeyaml.Yaml;
 public class WebServer {
 
     private Server server;
+    private KnoxCollector knoxCollector;
 
     WebServer configure(Config config, String address, int port, String knoxGatewayUrl) {
         // Metrics
-        final KnoxCollector knoxCollector = new KnoxCollector(knoxGatewayUrl, config);
+        knoxCollector = new KnoxCollector(knoxGatewayUrl, config);
         knoxCollector.register();
 
         new MemoryPoolsExports().register();
@@ -41,6 +42,11 @@ public class WebServer {
     Server start() throws Exception {
         server.start();
         return server;
+    }
+
+    public void shutdown() throws Exception {
+        server.stop();
+        knoxCollector.shutdown();
     }
 
     public static void main(String[] args) throws Exception {

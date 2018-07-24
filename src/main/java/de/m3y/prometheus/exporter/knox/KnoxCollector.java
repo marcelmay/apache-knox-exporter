@@ -11,6 +11,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
@@ -66,10 +70,12 @@ public class KnoxCollector extends Collector {
 
     final Config config;
     final String knoxGatewayUrl;
+    final ExecutorService executorService;
 
     KnoxCollector(String knoxGatewayUrl, Config config) {
         this.knoxGatewayUrl = knoxGatewayUrl;
         this.config = config;
+        executorService = Executors.newFixedThreadPool(2 /* Two checks for now */);
     }
 
     public List<MetricFamilySamples> collect() {
@@ -88,7 +94,22 @@ public class KnoxCollector extends Collector {
         return Collections.emptyList(); // Directly registered counters
     }
 
-    public void close() {
+    public void shutdown() {
+        if (null != executorService) {
+            LOGGER.info("Shutting down executor service ...");
+            executorService.shutdown();
+
+            try {
+                executorService.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                LOGGER.warn("Executor service failed to await termination of running checks", e);
+            }
+
+            // Try to force shutdown
+            if (!executorService.isTerminated()) {
+                executorService.shutdownNow();
+            }
+        }
     }
 
     private void scrapeKnox() throws URISyntaxException, IOException {
@@ -153,6 +174,30 @@ public class KnoxCollector extends Collector {
         }
     }
 
+    static class MetricCallable implements Callable<Boolean> {
+        final Callable<Boolean> delegate;
+        final String action;
+
+        MetricCallable(Callable<Boolean> delegate, String action) {
+            this.delegate = delegate;
+            this.action = action;
+        }
+
+        @Override
+        public Boolean call() throws Exception {
+            try (final Summary.Timer timer = METRIC_OPS_LATENCY.labels(action).startTimer()) {
+                if (Boolean.FALSE.equals(delegate.call())) {
+                    KNOX_OPS_ERRORS.labels(action).inc();
+                }
+            } catch (Exception e) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Received error invoking {} : {}", action, e);
+                }
+                KNOX_OPS_ERRORS.labels(action).inc();
+            }
+            return Boolean.FALSE;
+        }
+    }
 
     private void scrapeKnox(Hadoop hadoop) {
         Map<String, Callable<Boolean>> actions = new HashMap<>();
@@ -165,22 +210,23 @@ public class KnoxCollector extends Collector {
             actions.put(HIVE_QUERY, new HiveCheck(config));
         }
 
-        for (Map.Entry<String, Callable<Boolean>> entry : actions.entrySet()) {
-            final String action = entry.getKey();
-            try {
-                try (final Summary.Timer timer = METRIC_OPS_LATENCY.labels(action).startTimer()) {
-                    if (Boolean.FALSE.equals(entry.getValue().call())) {
-                        KNOX_OPS_ERRORS.labels(action).inc();
-                    }
-                }
-            } catch (Exception e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Received error invoking {} : {}", action, e);
-                }
-                KNOX_OPS_ERRORS.labels(action).inc();
-            }
-        }
+        // Invoke actions in parallel for speedup
+        final List<MetricCallable> metricCallables = actions.entrySet().stream()
+                .map((entry) -> new MetricCallable(entry.getValue(), entry.getKey()))
+                .collect(Collectors.toList());
 
+        try {
+            executorService.invokeAll(metricCallables,
+                    55 /* 60s is usually a default timeout for nginx etc. */, TimeUnit.SECONDS).stream()
+                    .forEach( (callable)->{
+                        if(!callable.isDone()) { // Terminated -> error
+                            METRIC_SCRAPE_ERROR.inc();
+                        }
+                    });
+        } catch (InterruptedException ex) {
+            METRIC_SCRAPE_ERROR.inc();
+            LOGGER.error("Failed to invoke actions", ex);
+        }
     }
 
     private boolean isNotEmpty(String value) {
