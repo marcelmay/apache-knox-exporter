@@ -42,6 +42,28 @@ public class KnoxCollector extends Collector {
             .name(METRIC_PREFIX + "scrape_duration_seconds")
             .help("Scrape duration").register();
 
+    private static final Counter KNOX_OPS_ERRORS = Counter.build()
+            .name(METRIC_PREFIX + "ops_errors_total")
+            .help("Counts errors.")
+            .labelNames("action")
+            .register();
+
+    private static final Summary METRIC_OPS_LATENCY = Summary.build()
+            .name(METRIC_PREFIX + "ops_duration_seconds")
+            .help("Ops duration")
+            .labelNames("action")
+            .quantile(0.5, 0.05)
+            .quantile(0.95, 0.01)
+            .quantile(0.99, 0.001)
+            .register();
+    private static final String HIVE_QUERY = "hive_query";
+    private static final String WEBHDFS_STATUS = "webhdfs_status";
+
+    static { // https://www.robustperception.io/existential-issues-with-metrics
+        KNOX_OPS_ERRORS.labels(WEBHDFS_STATUS);
+        KNOX_OPS_ERRORS.labels(HIVE_QUERY);
+    }
+
     final Config config;
     final String knoxGatewayUrl;
 
@@ -66,26 +88,14 @@ public class KnoxCollector extends Collector {
         return Collections.emptyList(); // Directly registered counters
     }
 
+    public void close() {
+    }
+
     private void scrapeKnox() throws URISyntaxException, IOException {
         try (final Hadoop hadoop = Hadoop.login(knoxGatewayUrl, config.getUsername(), config.getPassword())) {
             scrapeKnox(hadoop);
         }
     }
-
-    private static final Counter KNOX_OPS_ERRORS = Counter.build()
-            .name(METRIC_PREFIX + "ops_errors_total")
-            .help("Counts errors.")
-            .labelNames("action")
-            .register();
-
-    private static final Summary METRIC_OPS_LATENCY = Summary.build()
-            .name(METRIC_PREFIX + "ops_duration_seconds")
-            .help("Ops duration")
-            .labelNames("action")
-            .quantile(0.5, 0.05)
-            .quantile(0.95, 0.01)
-            .quantile(0.99, 0.001)
-            .register();
 
 
     static class CallableBasicResponseAdapter implements Callable<Boolean> {
@@ -143,15 +153,16 @@ public class KnoxCollector extends Collector {
         }
     }
 
+
     private void scrapeKnox(Hadoop hadoop) {
         Map<String, Callable<Boolean>> actions = new HashMap<>();
         if (isNotEmpty(config.getWebHdfStatusPath())) {
-            actions.put("webhdfs_status", new CallableBasicResponseAdapter(
+            actions.put(WEBHDFS_STATUS, new CallableBasicResponseAdapter(
                     Hdfs.status(hadoop).file(config.getWebHdfStatusPath()).callable()));
         }
 
         if (isNotEmpty(config.getHiveJdbcUrl())) {
-            actions.put("hive_query", new HiveCheck(config));
+            actions.put(HIVE_QUERY, new HiveCheck(config));
         }
 
         for (Map.Entry<String, Callable<Boolean>> entry : actions.entrySet()) {
