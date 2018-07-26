@@ -28,8 +28,7 @@ public class WebServerIT {
             config = new Yaml().loadAs(reader, Config.class);
         }
 
-        webServer = new WebServer().configure(config, "localhost", 7772,
-                "http://localhost:8080/gateway/default");
+        webServer = new WebServer().configure(config, "localhost", 7772);
         webServer.start();
         exporterBaseUrl = "http://localhost:7772";
         client = new OkHttpClient();

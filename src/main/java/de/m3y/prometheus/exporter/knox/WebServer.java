@@ -17,9 +17,9 @@ public class WebServer {
     private Server server;
     private KnoxCollector knoxCollector;
 
-    WebServer configure(Config config, String address, int port, String knoxGatewayUrl) {
+    WebServer configure(Config config, String address, int port) {
         // Metrics
-        knoxCollector = new KnoxCollector(knoxGatewayUrl, config);
+        knoxCollector = new KnoxCollector(config);
         knoxCollector.register();
 
         new MemoryPoolsExports().register();
@@ -34,7 +34,7 @@ public class WebServer {
         context.setContextPath("/");
         server.setHandler(context);
         context.addServlet(new ServletHolder(new MetricsServlet()), "/metrics");
-        context.addServlet(new ServletHolder(new HomePageServlet(knoxGatewayUrl, config, buildInfo)), "/");
+        context.addServlet(new ServletHolder(new HomePageServlet(config, buildInfo)), "/");
 
         return this;
     }
@@ -51,7 +51,7 @@ public class WebServer {
 
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
-            System.out.println("Usage: WebServer [-Dlog.level=[WARN|INFO|DEBUG]] <hostname> <port> <knox gateway url> <yml configuration file>"); // NOSONAR
+            System.out.println("Usage: WebServer [-Dlog.level=[WARN|INFO|DEBUG]] <hostname> <port> <yml configuration file>"); // NOSONAR
             System.out.println();
             System.exit(1);
         }
@@ -59,10 +59,10 @@ public class WebServer {
         RootLogger.getRootLogger().setLevel(Level.toLevel(System.getProperty("log.level"), Level.INFO));
 
         Config config;
-        try (FileReader reader = new FileReader(args[3])) {
+        try (FileReader reader = new FileReader(args[2])) {
             config = new Yaml().loadAs(reader, Config.class);
         }
 
-        new WebServer().configure(config, args[0], Integer.parseInt(args[1]), args[2]).start().join();
+        new WebServer().configure(config, args[0], Integer.parseInt(args[1])).start().join();
     }
 }

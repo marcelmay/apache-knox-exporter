@@ -6,15 +6,11 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
@@ -69,13 +65,30 @@ public class KnoxCollector extends Collector {
     }
 
     final Config config;
-    final String knoxGatewayUrl;
     final ExecutorService executorService;
 
-    KnoxCollector(String knoxGatewayUrl, Config config) {
-        this.knoxGatewayUrl = knoxGatewayUrl;
+    KnoxCollector(Config config) {
         this.config = config;
-        executorService = Executors.newFixedThreadPool(2 /* Two checks for now */);
+        executorService = Executors.newFixedThreadPool(countServices(config) /* Thread per service check */);
+    }
+
+    private int countServices(Config config) {
+        int count = 0;
+        if (config.getHiveServices() != null) {
+            for (Config.HiveService hiveService : config.getHiveServices()) {
+                if (hiveService.getQueries() != null) {
+                    count += hiveService.getQueries().length;
+                }
+            }
+        }
+        if (config.getWebHdfsServices() != null) {
+            for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
+                if (webHdfsService.statusPaths != null) {
+                    count += webHdfsService.statusPaths.length;
+                }
+            }
+        }
+        return count;
     }
 
     public List<MetricFamilySamples> collect() {
@@ -113,113 +126,13 @@ public class KnoxCollector extends Collector {
     }
 
     private void scrapeKnox() throws URISyntaxException, IOException {
-        try (final Hadoop hadoop = Hadoop.login(knoxGatewayUrl, config.getUsername(), config.getPassword())) {
-            scrapeKnox(hadoop);
-        }
-    }
-
-
-    static class CallableBasicResponseAdapter implements Callable<Boolean> {
-        private final Callable<? extends BasicResponse> knoxRequest;
-
-        CallableBasicResponseAdapter(Callable<? extends BasicResponse> knoxRequest) {
-            this.knoxRequest = knoxRequest;
-        }
-
-        @Override
-        public Boolean call() throws Exception {
-            try (BasicResponse basicResponse = knoxRequest.call()) {
-                if (basicResponse.getStatusCode() == 200) {
-                    return Boolean.TRUE;
-                } else if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Failed knox check, status={}, response={}",
-                            basicResponse.getStatusCode(), basicResponse.getString());
-                }
-            }
-            return Boolean.FALSE;
-        }
-    }
-
-    static class HiveCheck implements Callable<Boolean> {
-        static {
-            try {
-                Class.forName(HiveDriver.class.getName());
-            } catch (ClassNotFoundException e) {
-                throw new IllegalStateException("Can not load hive JDBC driver", e);
-            }
-        }
-
-        private final Config config;
-
-        HiveCheck(Config config) {
-            this.config = config;
-        }
-
-        @Override
-        public Boolean call() throws Exception {
-            try (Connection con = DriverManager.getConnection(config.getHiveJdbcUrl(),
-                    config.getUsername(), config.getPassword())) {
-                try (Statement stmt = con.createStatement()) {
-                    try (ResultSet resultSet = stmt.executeQuery(config.getHiveQuery())) {
-                        if (resultSet.next()) {
-                            return Boolean.TRUE;
-                        } else if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("No Hive ResultSet.next()");
-                        }
-                    }
-                }
-
-            }
-            return Boolean.FALSE;
-        }
-    }
-
-    static class MetricCallable implements Callable<Boolean> {
-        final Callable<Boolean> delegate;
-        final String action;
-
-        MetricCallable(Callable<Boolean> delegate, String action) {
-            this.delegate = delegate;
-            this.action = action;
-        }
-
-        @Override
-        public Boolean call() throws Exception {
-            try (final Summary.Timer timer = METRIC_OPS_LATENCY.labels(action).startTimer()) {
-                if (Boolean.FALSE.equals(delegate.call())) {
-                    KNOX_OPS_ERRORS.labels(action).inc();
-                }
-            } catch (Exception e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Received error invoking {} : {}", action, e);
-                }
-                KNOX_OPS_ERRORS.labels(action).inc();
-            }
-            return Boolean.FALSE;
-        }
-    }
-
-    private void scrapeKnox(Hadoop hadoop) {
-        Map<String, Callable<Boolean>> actions = new HashMap<>();
-        if (isNotEmpty(config.getWebHdfStatusPath())) {
-            actions.put(WEBHDFS_STATUS, new CallableBasicResponseAdapter(
-                    Hdfs.status(hadoop).file(config.getWebHdfStatusPath()).callable()));
-        }
-
-        if (isNotEmpty(config.getHiveJdbcUrl())) {
-            actions.put(HIVE_QUERY, new HiveCheck(config));
-        }
-
-        // Invoke actions in parallel for speedup
-        final List<MetricCallable> metricCallables = actions.entrySet().stream()
-                .map((entry) -> new MetricCallable(entry.getValue(), entry.getKey()))
-                .collect(Collectors.toList());
+        List<Callable<Boolean>> actions = configureActions();
 
         try {
-            executorService.invokeAll(metricCallables,
+            executorService.invokeAll(actions,
                     55 /* 60s is usually a default timeout for nginx etc. */, TimeUnit.SECONDS).stream()
-                    .forEach( (callable)->{
-                        if(!callable.isDone()) { // Terminated -> error
+                    .forEach((callable) -> {
+                        if (!callable.isDone()) { // Terminated -> error
                             METRIC_SCRAPE_ERROR.inc();
                         }
                     });
@@ -229,7 +142,140 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private boolean isNotEmpty(String value) {
-        return null != value && !value.isEmpty();
+    private List<Callable<Boolean>> configureActions() {
+        List<Callable<Boolean>> actions = new ArrayList<>();
+        for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
+            String password = webHdfsService.getPassword();
+            if (null == password) {
+                password = config.getDefaulPassword();
+            }
+            String username = webHdfsService.getUsername();
+            if (null == username) {
+                username = config.getDefaultUsername();
+            }
+            for (String statusPath : webHdfsService.getStatusPaths()) {
+                actions.add(new WebHdfsStatusAction(webHdfsService.getName(), webHdfsService.getKnoxUrl(), statusPath, username, password));
+            }
+        }
+        for (Config.HiveService hiveService : config.getHiveServices()) {
+            String password = hiveService.getPassword();
+            if (null == password) {
+                password = config.getDefaulPassword();
+            }
+            String username = hiveService.getUsername();
+            if (null == username) {
+                username = config.getDefaultUsername();
+            }
+            for (String query : hiveService.getQueries()) {
+                actions.add(new HiveQueryAction(hiveService.getName(), hiveService.getJdbcUrl(), query, username, password));
+            }
+        }
+        return actions;
+    }
+
+
+    static abstract class MetricAction implements Callable<Boolean> {
+        @Override
+        public Boolean call() throws Exception {
+            final String[] labels = getLabels();
+            try (final Summary.Timer timer = METRIC_OPS_LATENCY.labels(labels).startTimer()) {
+                if (Boolean.FALSE.equals(perform())) {
+                    KNOX_OPS_ERRORS.labels(labels).inc();
+                }
+            } catch (Exception e) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Received error invoking {} : {}", labels, e);
+                }
+                KNOX_OPS_ERRORS.labels(labels).inc();
+            }
+            return Boolean.FALSE;
+        }
+
+        abstract Boolean perform() throws Exception;
+
+        abstract String[] getLabels();
+    }
+
+    static class WebHdfsStatusAction extends MetricAction {
+        private final String name;
+        private final String knoxUrl;
+        private final String username;
+        private final String password;
+        private final String statusPath;
+
+        WebHdfsStatusAction(String name,String knoxUrl, String statusPath, String username, String password) {
+            this.name = name;
+            this.knoxUrl = knoxUrl;
+            this.username = username;
+            this.password = password;
+            this.statusPath = statusPath;
+        }
+
+        @Override
+        Boolean perform() throws Exception {
+            try (final Hadoop hadoop = Hadoop.login(knoxUrl, username, password)) {
+                try (BasicResponse basicResponse = Hdfs.status(hadoop).file(statusPath).now()) {
+                    if (basicResponse.getStatusCode() == 200) {
+                        return Boolean.TRUE;
+                    } else if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Failed knox check {}, status={}, response={}", name,
+                                basicResponse.getStatusCode(), basicResponse.getString());
+                    }
+                }
+            }
+            return Boolean.FALSE;
+        }
+
+        @Override
+        String[] getLabels() {
+            return new String[]{name};
+        }
+    }
+
+    static class HiveQueryAction extends MetricAction {
+        static {
+            try {
+                Class.forName(HiveDriver.class.getName());
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException("Can not load hive JDBC driver", e);
+            }
+        }
+
+        private final String name;
+        private final String jdbcUrl;
+        private final String query;
+        private final String username;
+        private final String password;
+
+
+        HiveQueryAction(String name, String jdbcUrl, String query, String username, String password) {
+            this.name = name;
+            this.jdbcUrl = jdbcUrl;
+            this.query = query;
+            this.username = username;
+            this.password = password;
+        }
+
+        @Override
+        Boolean perform() throws Exception {
+            try (Connection con = DriverManager.getConnection(jdbcUrl, username, password)) {
+                try (Statement stmt = con.createStatement()) {
+                    try (ResultSet resultSet = stmt.executeQuery(query)) {
+                        if (resultSet.next()) {
+                            return Boolean.TRUE;
+                        } else if (LOGGER.isDebugEnabled()) {
+                            LOGGER.debug("No Hive ResultSet.next() for {} and query {}", name, query);
+                        }
+                    }
+                }
+
+            }
+            return Boolean.FALSE;
+        }
+
+        @Override
+        String[] getLabels() {
+            return new String[]{name};
+        }
     }
 }

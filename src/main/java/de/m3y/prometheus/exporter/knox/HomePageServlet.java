@@ -1,6 +1,7 @@
 package de.m3y.prometheus.exporter.knox;
 
 import java.io.IOException;
+import java.util.Arrays;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -12,10 +13,8 @@ public class HomePageServlet extends HttpServlet {
 
     private final Config config;
     private final BuildInfoExporter buildInfoExporter;
-    private final String knoxGatewayUrl;
 
-    HomePageServlet(String knoxGatewayUrl, Config config, BuildInfoExporter buildInfoExporter) {
-        this.knoxGatewayUrl = knoxGatewayUrl;
+    HomePageServlet(Config config, BuildInfoExporter buildInfoExporter) {
         this.config = config;
         this.buildInfoExporter = buildInfoExporter;
     }
@@ -35,13 +34,22 @@ public class HomePageServlet extends HttpServlet {
                 + "<li>SCM version : ").append(buildInfoExporter.getBuildScmVersion()).append("</li>"
                 + "</ul>"
                 + "<h2>Configuration</h2><ul>"
-                + "<li>Knox gateway URL : ").append(knoxGatewayUrl).append("</li>"
-                + "<li>username : ").append(config.getUsername()).append("</li>"
-                + "<li>webHdfStatusPath : ").append(config.getWebHdfStatusPath()).append("</li>"
-                + "<li>hiveJdbcUrl : ").append(config.getHiveJdbcUrl()).append("</li>"
-                + "<li>hiveQuery : ").append(config.getHiveQuery()).append("</li>"
-                + "</ul></body>\n"
-                + "</html>");
+                + "<li>default username : ").append(config.getDefaultUsername()).append("</li>"
+                + "<li>WebHDFS services"
+                + "<ul>");
+        for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
+            buf.append("<li>Knox URL : ").append(webHdfsService.getKnoxUrl()).append("</li>")
+                    .append("<li>Username : ").append(webHdfsService.getUsername()).append("</li>")
+                    .append("<li>Status Path : ").append(Arrays.toString(webHdfsService.getStatusPaths())).append("</li>");
+        }
+        buf.append("</ul></li>")
+                .append("<li>Hive services<ul>");
+        for (Config.HiveService hiveService : config.getHiveServices()) {
+            buf.append("<li>JDBC URL : ").append(hiveService.getJdbcUrl()).append("</li>")
+                    .append("<li>Username : ").append(hiveService.getUsername()).append("</li>")
+                    .append("<li>Queries : ").append(Arrays.toString(hiveService.getQueries())).append("</li>");
+        }
+        buf.append("</ul></li></html>");
         resp.setContentType("text/html");
         resp.getWriter().print(buf);
     }
