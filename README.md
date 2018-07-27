@@ -11,6 +11,10 @@ The exporter collects per request
 * error count 
 * duration summary with 0.5/0.95/0.99 quantiles
 
+## Roadmap
+
+See [issues](../../issues)
+
 ## Requirements
 For building:
 * JDK 8
@@ -99,13 +103,9 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
 | knox_exporter_ops_errors_total | Counter | Errors of a request to Hive or WebHDFS |
 | knox_exporter_scrape_duration_seconds | Gauge | Total duration of a scrape request (includes all hive and WebHDFS requests) |
 | knox_exporter_scrape_requests_total | Counter | Total number of scrape requests to this exporter |
-| knox_exporter_app_info | Exporter info such as version, build time etc |
+| knox_exporter_app_info | Gauge | Exporter info such as version, build time etc |
 
 See the [example metrics](#example-metrics) output below.
-
-## Roadmap
-
-See [issues](../../issues)
 
 ## Example output
 
