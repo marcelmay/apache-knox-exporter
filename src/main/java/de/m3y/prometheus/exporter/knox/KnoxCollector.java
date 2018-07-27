@@ -1,7 +1,5 @@
 package de.m3y.prometheus.exporter.knox;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -122,13 +120,13 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private void scrapeKnox() throws URISyntaxException, IOException {
-        List<Callable<Boolean>> actions = configureActions();
+    private void scrapeKnox() {
+        List<Callable<Boolean>> scrapeActions = configureActions();
 
         try {
-            executorService.invokeAll(actions,
+            executorService.invokeAll(scrapeActions,
                     55 /* 60s is usually a default timeout for nginx etc. */, TimeUnit.SECONDS).stream()
-                    .forEach((callable) -> {
+                    .forEach(callable -> {
                         if (!callable.isDone()) { // Terminated -> error
                             METRIC_SCRAPE_ERROR.inc();
                         }
@@ -140,7 +138,7 @@ public class KnoxCollector extends Collector {
     }
 
     private List<Callable<Boolean>> configureActions() {
-        List<Callable<Boolean>> actions = new ArrayList<>();
+        List<Callable<Boolean>> newActions = new ArrayList<>();
 
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             String password = webHdfsService.getPassword();
@@ -152,7 +150,7 @@ public class KnoxCollector extends Collector {
                 username = config.getDefaultUsername();
             }
             for (String statusPath : webHdfsService.getStatusPaths()) {
-                actions.add(new WebHdfsStatusAction(webHdfsService.getKnoxUrl(), statusPath, username, password));
+                newActions.add(new WebHdfsStatusAction(webHdfsService.getKnoxUrl(), statusPath, username, password));
 
                 // https://www.robustperception.io/existential-issues-with-metrics
                 KNOX_OPS_ERRORS.labels(ACTION_WEBHDFS_STATUS, webHdfsService.getKnoxUrl(), username, statusPath);
@@ -169,19 +167,19 @@ public class KnoxCollector extends Collector {
                 username = config.getDefaultUsername();
             }
             for (String query : hiveService.getQueries()) {
-                actions.add(new HiveQueryAction(hiveService.getJdbcUrl(), query, username, password));
+                newActions.add(new HiveQueryAction(hiveService.getJdbcUrl(), query, username, password));
 
                 // https://www.robustperception.io/existential-issues-with-metrics
                 KNOX_OPS_ERRORS.labels(ACTION_HIVE_QUERY, hiveService.getJdbcUrl(), username, query);
             }
         }
 
-        return actions;
+        return newActions;
     }
 
-    static abstract class MetricAction implements Callable<Boolean> {
+    abstract static class MetricAction implements Callable<Boolean> {
         @Override
-        public Boolean call() throws Exception {
+        public Boolean call() {
             final String[] labels = getLabels();
             try (final Summary.Timer timer = METRIC_OPS_LATENCY.labels(labels).startTimer()) {
                 if (Boolean.FALSE.equals(perform())) {
