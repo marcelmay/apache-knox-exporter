@@ -39,18 +39,22 @@ public class HomePageServlet extends HttpServlet {
                 + "<ul>");
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             buf.append("<li>Knox URL : ").append(webHdfsService.getKnoxUrl()).append("</li>")
-                    .append("<li>Username : ").append(webHdfsService.getUsername()).append("</li>")
+                    .append("<li>Username : ").append(getEmtpyStringIfNull(webHdfsService.getUsername())).append("</li>")
                     .append("<li>Status Path : ").append(Arrays.toString(webHdfsService.getStatusPaths())).append("</li>");
         }
         buf.append("</ul></li>")
                 .append("<li>Hive services<ul>");
         for (Config.HiveService hiveService : config.getHiveServices()) {
             buf.append("<li>JDBC URL : ").append(hiveService.getJdbcUrl()).append("</li>")
-                    .append("<li>Username : ").append(hiveService.getUsername()).append("</li>")
+                    .append("<li>Username : ").append(getEmtpyStringIfNull(hiveService.getUsername())).append("</li>")
                     .append("<li>Queries : ").append(Arrays.toString(hiveService.getQueries())).append("</li>");
         }
         buf.append("</ul></li></html>");
         resp.setContentType("text/html");
         resp.getWriter().print(buf);
+    }
+
+    private String getEmtpyStringIfNull(String value) {
+        return null == value ? "" : value;
     }
 }

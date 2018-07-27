@@ -1,7 +1,7 @@
 # Default user for connecting
 defaultUsername: 'foo'
 # Default password for user
-defaulPassword: '***'
+defaultPassword: '***'
 
 # One or more Hive services and queries
 hiveServices:

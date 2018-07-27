@@ -65,20 +65,21 @@ public class WebServerIT {
 
         // knox_exporter_ops_duration_seconds
         // WebHDFS
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.5\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.95\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",quantile=\"0.99\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"webhdfs_status\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"webhdfs_status\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",quantile=\"0.5\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",quantile=\"0.95\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",quantile=\"0.99\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",}");
         // Hive
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",quantile=\"0.5\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",quantile=\"0.95\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",quantile=\"0.99\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hive_query\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hive_query\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.5\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.95\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.99\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
 
         // knox_exporter_ops_errors_total
-        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",}");
+        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
+        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",}");
     }
 
     @Test
@@ -96,9 +97,9 @@ public class WebServerIT {
         assertThat(body).contains("SCM version :");
 
         // Config options
-        assertThat(body).contains("Knox gateway URL : http://localhost:8080/gateway/default");
+        assertThat(body).contains("Knox URL : https://localhost:8443/gateway/default");
         assertThat(body).contains("username : foo");
-        assertThat(body).contains("webHdfStatusPath : /");
+        assertThat(body).contains("Status Path : [/]");
     }
 
     private Response getResponse(String url) throws IOException {

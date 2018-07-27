@@ -1,12 +1,15 @@
 # User for connecting to Knox
-username : 'foo'
+defaultUsername: 'foo'
 # Password for authenticating user
-password : '***'
+defaultPassword: '***'
 
-# WebHDFS STATUS call directory or file path
-webHdfStatusPath : '/'
+webHdfsServices:
+- knoxUrl: 'https://localhost:8443/gateway/default'
+  # WebHDFS STATUS call directory or file path
+  statusPaths: ['/']
 
+hiveServices:
 # Hive JDBC URL
-hiveJdbcUrl: 'jdbc:hive://localhost:10000/default'
-# Hive Query
-hiveQuery: 'SELECT current_database()'
+- jdbcUrl: 'jdbc:hive://localhost:10000/default'
+  # Hive Query
+  queries: ['SELECT current_database()']

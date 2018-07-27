@@ -45,30 +45,27 @@ public class KnoxCollector extends Collector {
     private static final Counter KNOX_OPS_ERRORS = Counter.build()
             .name(METRIC_PREFIX + "ops_errors_total")
             .help("Counts errors.")
-            .labelNames("action")
+            .labelNames("action", "uri", "user", "param")
             .register();
 
     private static final Summary METRIC_OPS_LATENCY = Summary.build()
             .name(METRIC_PREFIX + "ops_duration_seconds")
             .help("Ops duration")
-            .labelNames("action")
+            .labelNames("action", "uri", "user", "param")
             .quantile(0.5, 0.05)
             .quantile(0.95, 0.01)
             .quantile(0.99, 0.001)
             .register();
-    private static final String HIVE_QUERY = "hive_query";
-    private static final String WEBHDFS_STATUS = "webhdfs_status";
-
-    static { // https://www.robustperception.io/existential-issues-with-metrics
-        KNOX_OPS_ERRORS.labels(WEBHDFS_STATUS);
-        KNOX_OPS_ERRORS.labels(HIVE_QUERY);
-    }
+    private static final String ACTION_HIVE_QUERY = "hive_query";
+    private static final String ACTION_WEBHDFS_STATUS = "webhdfs_status";
 
     final Config config;
     final ExecutorService executorService;
+    final List<Callable<Boolean>> actions;
 
     KnoxCollector(Config config) {
         this.config = config;
+        actions = configureActions();
         executorService = Executors.newFixedThreadPool(countServices(config) /* Thread per service check */);
     }
 
@@ -144,35 +141,43 @@ public class KnoxCollector extends Collector {
 
     private List<Callable<Boolean>> configureActions() {
         List<Callable<Boolean>> actions = new ArrayList<>();
+
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             String password = webHdfsService.getPassword();
             if (null == password) {
-                password = config.getDefaulPassword();
+                password = config.getDefaultPassword();
             }
             String username = webHdfsService.getUsername();
             if (null == username) {
                 username = config.getDefaultUsername();
             }
             for (String statusPath : webHdfsService.getStatusPaths()) {
-                actions.add(new WebHdfsStatusAction(webHdfsService.getName(), webHdfsService.getKnoxUrl(), statusPath, username, password));
+                actions.add(new WebHdfsStatusAction(webHdfsService.getKnoxUrl(), statusPath, username, password));
+
+                // https://www.robustperception.io/existential-issues-with-metrics
+                KNOX_OPS_ERRORS.labels(ACTION_WEBHDFS_STATUS, webHdfsService.getKnoxUrl(), username, statusPath);
             }
         }
+
         for (Config.HiveService hiveService : config.getHiveServices()) {
             String password = hiveService.getPassword();
             if (null == password) {
-                password = config.getDefaulPassword();
+                password = config.getDefaultPassword();
             }
             String username = hiveService.getUsername();
             if (null == username) {
                 username = config.getDefaultUsername();
             }
             for (String query : hiveService.getQueries()) {
-                actions.add(new HiveQueryAction(hiveService.getName(), hiveService.getJdbcUrl(), query, username, password));
+                actions.add(new HiveQueryAction(hiveService.getJdbcUrl(), query, username, password));
+
+                // https://www.robustperception.io/existential-issues-with-metrics
+                KNOX_OPS_ERRORS.labels(ACTION_HIVE_QUERY, hiveService.getJdbcUrl(), username, query);
             }
         }
+
         return actions;
     }
-
 
     static abstract class MetricAction implements Callable<Boolean> {
         @Override
@@ -197,14 +202,12 @@ public class KnoxCollector extends Collector {
     }
 
     static class WebHdfsStatusAction extends MetricAction {
-        private final String name;
         private final String knoxUrl;
         private final String username;
         private final String password;
         private final String statusPath;
 
-        WebHdfsStatusAction(String name,String knoxUrl, String statusPath, String username, String password) {
-            this.name = name;
+        WebHdfsStatusAction(String knoxUrl, String statusPath, String username, String password) {
             this.knoxUrl = knoxUrl;
             this.username = username;
             this.password = password;
@@ -218,7 +221,9 @@ public class KnoxCollector extends Collector {
                     if (basicResponse.getStatusCode() == 200) {
                         return Boolean.TRUE;
                     } else if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Failed knox check {}, status={}, response={}", name,
+                        LOGGER.debug("Failed WebHDFS check using knox url {} and webhdf status for path {}." +
+                                        " Response status code is {}, body is {}",
+                                knoxUrl, statusPath,
                                 basicResponse.getStatusCode(), basicResponse.getString());
                     }
                 }
@@ -228,7 +233,7 @@ public class KnoxCollector extends Collector {
 
         @Override
         String[] getLabels() {
-            return new String[]{name};
+            return new String[]{ACTION_WEBHDFS_STATUS, knoxUrl, username, statusPath};
         }
     }
 
@@ -241,15 +246,13 @@ public class KnoxCollector extends Collector {
             }
         }
 
-        private final String name;
         private final String jdbcUrl;
         private final String query;
         private final String username;
         private final String password;
 
 
-        HiveQueryAction(String name, String jdbcUrl, String query, String username, String password) {
-            this.name = name;
+        HiveQueryAction(String jdbcUrl, String query, String username, String password) {
             this.jdbcUrl = jdbcUrl;
             this.query = query;
             this.username = username;
@@ -264,7 +267,8 @@ public class KnoxCollector extends Collector {
                         if (resultSet.next()) {
                             return Boolean.TRUE;
                         } else if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("No Hive ResultSet.next() for {} and query {}", name, query);
+                            LOGGER.debug("No Hive ResultSet.next() to {} using query {} and user {}",
+                                    jdbcUrl, query, username);
                         }
                     }
                 }
@@ -275,7 +279,7 @@ public class KnoxCollector extends Collector {
 
         @Override
         String[] getLabels() {
-            return new String[]{name};
+            return new String[]{ACTION_HIVE_QUERY, jdbcUrl, username, query};
         }
     }
 }

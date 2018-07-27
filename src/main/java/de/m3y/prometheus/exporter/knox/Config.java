@@ -5,12 +5,11 @@ package de.m3y.prometheus.exporter.knox;
  */
 public class Config {
     private String defaultUsername;
-    private String defaulPassword;
+    private String defaultPassword;
     private WebHdfsService[] webHdfsServices;
     private HiveService[] hiveServices;
 
     public abstract static class KnoxService {
-        private String name;
         private String username;
         private String password;
 
@@ -28,14 +27,6 @@ public class Config {
 
         public void setPassword(String password) {
             this.password = password;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
         }
     }
 
@@ -59,9 +50,8 @@ public class Config {
             this.queries = queries;
         }
 
-        static HiveService of(String name, String username, String password, String jdbcUrl, String... query) {
+        static HiveService of(String username, String password, String jdbcUrl, String... query) {
             HiveService hiveCheck = new HiveService();
-            hiveCheck.setName(name);
             hiveCheck.setUsername(username);
             hiveCheck.setPassword(password);
             hiveCheck.setJdbcUrl(jdbcUrl);
@@ -90,9 +80,8 @@ public class Config {
             this.statusPaths = statusPaths;
         }
 
-        static WebHdfsService of(String name, String username, String password, String knoxUrl, String... statusPaths) {
+        static WebHdfsService of(String username, String password, String knoxUrl, String... statusPaths) {
             WebHdfsService webHdfsCheck = new WebHdfsService();
-            webHdfsCheck.setName(name);
             webHdfsCheck.setUsername(username);
             webHdfsCheck.setPassword(password);
             webHdfsCheck.setKnoxUrl(knoxUrl);
@@ -109,12 +98,12 @@ public class Config {
         this.defaultUsername = defaultUsername;
     }
 
-    public String getDefaulPassword() {
-        return defaulPassword;
+    public String getDefaultPassword() {
+        return defaultPassword;
     }
 
-    public void setDefaulPassword(String defaulPassword) {
-        this.defaulPassword = defaulPassword;
+    public void setDefaultPassword(String defaultPassword) {
+        this.defaultPassword = defaultPassword;
     }
 
     public WebHdfsService[] getWebHdfsServices() {

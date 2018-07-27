@@ -15,7 +15,7 @@ public class ConfigTest {
                 .getResourceAsStream("config-test.yml")) {
             Config config = new Yaml().loadAs(is, Config.class);
 
-            assertThat(config.getDefaulPassword()).isEqualTo("***");
+            assertThat(config.getDefaultPassword()).isEqualTo("***");
             assertThat(config.getDefaultUsername()).isEqualTo("foo");
 
             Config.HiveService[] hiveServices = config.getHiveServices();
