@@ -1,19 +1,19 @@
 # Default user for connecting
 defaultUsername: 'foo'
 # Default password for user
-defaulPassword: '***'
+defaultPassword: '***'
 
 # One or more Hive services and queries
-hiveChecks:
+hiveServices:
 - jdbcUrl: 'jdbc:hive://knox-hive-server:10000/default'
   queries: ['SELECT current_database()', 'something more complex']
-  username: 'foo-2'
-  password: '****'
+  username: 'foo-2' # Do not use default username
+  password: '****'  # Do not user default password
 - jdbcUrl: 'jdbc:hive://knox-hive-server:10000/other-database'
   queries: ['SELECT current_database()']
 
-# One or more WebHDFS checks
-webHdfsChecks:
+# One or more WebHDFS endpoints
+webHdfsServices:
 - knoxUrl: 'https://my-knox-server/gateway/default'
   # WebHDFS STATUS call directory or file path
   statusPaths: ['/', '/datalake']
