@@ -50,7 +50,7 @@ public class WebServer {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 4) {
+        if (args.length < 3) {
             System.out.println("Usage: WebServer [-Dlog.level=[WARN|INFO|DEBUG]] <hostname> <port> <yml configuration file>"); // NOSONAR
             System.out.println();
             System.exit(1);
