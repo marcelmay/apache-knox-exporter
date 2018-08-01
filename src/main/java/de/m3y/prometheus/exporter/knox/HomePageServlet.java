@@ -11,16 +11,17 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class HomePageServlet extends HttpServlet {
 
-    private final Config config;
+    private final ConfigLoader configLoader;
     private final BuildInfoExporter buildInfoExporter;
 
-    HomePageServlet(Config config, BuildInfoExporter buildInfoExporter) {
-        this.config = config;
+    HomePageServlet(ConfigLoader configLoader, BuildInfoExporter buildInfoExporter) {
+        this.configLoader = configLoader;
         this.buildInfoExporter = buildInfoExporter;
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        Config config = configLoader.getCurrentConfig();
         StringBuilder buf = new StringBuilder().append("<html>\n"
                 + "<head><title>Apache Knox Exporter</title></head>\n"
                 + "<body>\n"

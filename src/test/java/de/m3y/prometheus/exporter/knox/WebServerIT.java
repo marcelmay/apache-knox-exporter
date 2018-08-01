@@ -1,17 +1,14 @@
 package de.m3y.prometheus.exporter.knox;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.eclipse.jetty.server.Server;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.yaml.snakeyaml.Yaml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,16 +16,12 @@ public class WebServerIT {
     private static WebServer webServer;
     private static String exporterBaseUrl;
     private static OkHttpClient client;
+    private static final File configFile = new File("src/test/resources/config-it.yml");
 
     @BeforeClass
     public static void setUp() throws Exception {
-        Config config;
-        try (Reader reader = new InputStreamReader(
-                Thread.currentThread().getContextClassLoader().getResourceAsStream("config-it.yml"))) {
-            config = new Yaml().loadAs(reader, Config.class);
-        }
-
-        webServer = new WebServer().configure(config, "localhost", 7772);
+        final ConfigLoader configLoader = ConfigLoader.forFile(configFile);
+        webServer = new WebServer().configure(configLoader, "localhost", 7772);
         webServer.start();
         exporterBaseUrl = "http://localhost:7772";
         client = new OkHttpClient();
@@ -71,14 +64,14 @@ public class WebServerIT {
         assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",}");
         assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",}");
         // Hive
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.5\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.95\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.99\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
-        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.5\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.95\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.99\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
 
         // knox_exporter_ops_errors_total
-        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hive_query\",uri=\"jdbc:hive://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
+        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
         assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",}");
     }
 

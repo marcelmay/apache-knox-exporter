@@ -10,6 +10,6 @@ webHdfsServices:
 
 hiveServices:
 # Hive JDBC URL
-- jdbcUrl: 'jdbc:hive://localhost:10000/default'
+- jdbcUrl: 'jdbc:hive2://localhost:10000/default'
   # Hive Query
   queries: ['SELECT current_database()']

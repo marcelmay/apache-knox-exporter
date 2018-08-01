@@ -1,14 +1,10 @@
 package de.m3y.prometheus.exporter.knox;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.sql.*;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
@@ -57,43 +53,26 @@ public class KnoxCollector extends Collector {
     private static final String ACTION_HIVE_QUERY = "hive_query";
     private static final String ACTION_WEBHDFS_STATUS = "webhdfs_status";
 
-    final Config config;
-    final ExecutorService executorService;
-    final List<Callable<Boolean>> actions;
+    private final ConfigLoader configLoader;
+    private final ThreadPoolExecutor executorService;
+    private List<Callable<Boolean>> actions;
+    private Config config;
 
-    KnoxCollector(Config config) {
-        this.config = config;
-        actions = configureActions();
-        executorService = Executors.newFixedThreadPool(countServices(config) /* Thread per service check */);
+    KnoxCollector(ConfigLoader configLoader) {
+        this.configLoader = configLoader;
+
+        config = configLoader.getOrLoadIfModified();
+        actions = configureActions(config);
+        executorService = new ThreadPoolExecutor(actions.size(), actions.size(),
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>());
     }
 
-    private int countServices(Config config) {
-        int count = 0;
-        if (config.getHiveServices() != null) {
-            for (Config.HiveService hiveService : config.getHiveServices()) {
-                if (hiveService.getQueries() != null) {
-                    count += hiveService.getQueries().length;
-                }
-            }
-        }
-        if (config.getWebHdfsServices() != null) {
-            for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
-                if (webHdfsService.statusPaths != null) {
-                    count += webHdfsService.statusPaths.length;
-                }
-            }
-        }
-        return count;
-    }
-
-    public List<MetricFamilySamples> collect() {
+    public synchronized List<MetricFamilySamples> collect() {
         try (Gauge.Timer timer = METRIC_SCRAPE_DURATION.startTimer()) {
             METRIC_SCRAPE_REQUESTS.inc();
 
-            // Switch report
-            synchronized (this) {
-                scrapeKnox();
-            }
+            scrapeKnox();
         } catch (Exception e) {
             METRIC_SCRAPE_ERROR.inc();
             LOGGER.error("Scrape failed", e);
@@ -102,30 +81,42 @@ public class KnoxCollector extends Collector {
         return Collections.emptyList(); // Directly registered counters
     }
 
-    public void shutdown() {
+    synchronized void shutdown() {
+        final int timeout = 5;
         if (null != executorService) {
             LOGGER.info("Shutting down executor service ...");
-            executorService.shutdown();
-
+            executorService.shutdown(); // Disable new tasks from being submitted
             try {
-                executorService.awaitTermination(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                LOGGER.warn("Executor service failed to await termination of running checks", e);
-            }
-
-            // Try to force shutdown
-            if (!executorService.isTerminated()) {
+                // Wait a while for existing tasks to terminate
+                if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow(); // Cancel currently executing tasks
+                    // Wait a while for tasks to respond to being cancelled
+                    if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS))
+                        LOGGER.error("Pool did not terminate after a timeout of {}s", timeout);
+                }
+            } catch (InterruptedException ie) {
+                LOGGER.warn("Executor service failed to await termination of running tasks", ie);
+                // (Re-)Cancel if current thread also interrupted
                 executorService.shutdownNow();
+                // Preserve interrupt status
+                Thread.currentThread().interrupt();
             }
         }
     }
 
     private void scrapeKnox() {
-        List<Callable<Boolean>> scrapeActions = configureActions();
+        if (configLoader.hasModifications()) {
+            config = configLoader.getOrLoadIfModified();
+            actions = configureActions(config);
+            if (actions.size() != executorService.getMaximumPoolSize()) {
+                executorService.setMaximumPoolSize(actions.size());
+                executorService.setCorePoolSize(actions.size());
+            }
+        }
 
         try {
-            executorService.invokeAll(scrapeActions,
-                    55 /* 60s is usually a default timeout for nginx etc. */, TimeUnit.SECONDS).stream()
+            executorService.invokeAll(actions,
+                    55 /* 60s is usually a default timeout for nginx etc. */, TimeUnit.SECONDS)
                     .forEach(callable -> {
                         if (!callable.isDone()) { // Terminated -> error
                             METRIC_SCRAPE_ERROR.inc();
@@ -134,10 +125,11 @@ public class KnoxCollector extends Collector {
         } catch (InterruptedException ex) {
             METRIC_SCRAPE_ERROR.inc();
             LOGGER.error("Failed to invoke actions", ex);
+            Thread.currentThread().interrupt();
         }
     }
 
-    private List<Callable<Boolean>> configureActions() {
+    private List<Callable<Boolean>> configureActions(Config config) {
         List<Callable<Boolean>> newActions = new ArrayList<>();
 
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
@@ -194,7 +186,7 @@ public class KnoxCollector extends Collector {
             return Boolean.FALSE;
         }
 
-        abstract Boolean perform() throws Exception;
+        abstract Boolean perform();
 
         abstract String[] getLabels();
     }
@@ -213,7 +205,7 @@ public class KnoxCollector extends Collector {
         }
 
         @Override
-        Boolean perform() throws Exception {
+        Boolean perform() {
             try (final Hadoop hadoop = Hadoop.login(knoxUrl, username, password)) {
                 try (BasicResponse basicResponse = Hdfs.status(hadoop).file(statusPath).now()) {
                     if (basicResponse.getStatusCode() == 200) {
@@ -225,6 +217,8 @@ public class KnoxCollector extends Collector {
                                 basicResponse.getStatusCode(), basicResponse.getString());
                     }
                 }
+            } catch (IOException | URISyntaxException e) {
+                LOGGER.warn("Failed to perform WebHDFS status action: {}", e.getMessage());
             }
             return Boolean.FALSE;
         }
@@ -258,7 +252,7 @@ public class KnoxCollector extends Collector {
         }
 
         @Override
-        Boolean perform() throws Exception {
+        Boolean perform() {
             try (Connection con = DriverManager.getConnection(jdbcUrl, username, password)) {
                 try (Statement stmt = con.createStatement()) {
                     try (ResultSet resultSet = stmt.executeQuery(query)) {
@@ -271,6 +265,8 @@ public class KnoxCollector extends Collector {
                     }
                 }
 
+            } catch (SQLException e) {
+                LOGGER.warn("Could not perform jdbc action : {}", e.getMessage());
             }
             return Boolean.FALSE;
         }
