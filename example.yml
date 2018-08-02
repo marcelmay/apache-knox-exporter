@@ -5,11 +5,11 @@ defaultPassword: '***'
 
 # One or more Hive services and queries
 hiveServices:
-- jdbcUrl: 'jdbc:hive://knox-hive-server:10000/default'
+- jdbcUrl: 'jdbc:hive2://knox-hive-server:10000/default'
   queries: ['SELECT current_database()', 'something more complex']
   username: 'foo-2' # Do not use default username
   password: '****'  # Do not user default password
-- jdbcUrl: 'jdbc:hive://knox-hive-server:10000/other-database'
+- jdbcUrl: 'jdbc:hive2://knox-hive-server:10000/other-database'
   queries: ['SELECT current_database()']
 
 # One or more WebHDFS endpoints

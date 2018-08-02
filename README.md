@@ -54,7 +54,7 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   # A list of Hive services
   hiveServices:
   # Hive JDBC URL
-  - jdbcUrl: 'jdbc:hive://localhost:10000/default'
+  - jdbcUrl: 'jdbc:hive2://localhost:10000/default'
     # One or more Hive Queries
     queries: ['SELECT current_database()']
   ```
