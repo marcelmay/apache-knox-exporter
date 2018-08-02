@@ -112,6 +112,7 @@ public class KnoxCollector extends Collector {
                 executorService.setMaximumPoolSize(actions.size());
                 executorService.setCorePoolSize(actions.size());
             }
+            LOGGER.info("Reloaded config.");
         }
 
         try {
