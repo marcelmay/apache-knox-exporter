@@ -185,6 +185,7 @@ public class KnoxCollector extends Collector {
 
             final HbaseStatusAction hbaseStatusAction = new HbaseStatusAction(hBaseService.getKnoxUrl(), username, password);
             newActions.add(hbaseStatusAction);
+
             // https://www.robustperception.io/existential-issues-with-metrics
             KNOX_OPS_ERRORS.labels(hbaseStatusAction.getLabels());
         }
@@ -218,11 +219,13 @@ public class KnoxCollector extends Collector {
         private final String knoxUrl;
         private final String username;
         private final String password;
+        private final String[] labels;
 
         HbaseStatusAction(String knoxUrl, String username, String password) {
             this.knoxUrl = knoxUrl;
             this.username = username;
             this.password = password;
+            labels = new String[]{ACTION_HBASE_STATUS, knoxUrl, username, "-"};
         }
 
         @Override
@@ -246,7 +249,7 @@ public class KnoxCollector extends Collector {
 
         @Override
         String[] getLabels() {
-            return new String[]{ACTION_HBASE_STATUS, knoxUrl, username, "-"};
+            return labels;
         }
     }
 
@@ -255,12 +258,14 @@ public class KnoxCollector extends Collector {
         private final String username;
         private final String password;
         private final String statusPath;
+        private final String[] labels;
 
         WebHdfsStatusAction(String knoxUrl, String statusPath, String username, String password) {
             this.knoxUrl = knoxUrl;
             this.username = username;
             this.password = password;
             this.statusPath = statusPath;
+            labels =  new String[]{ACTION_WEBHDFS_STATUS, knoxUrl, username, statusPath};
         }
 
         @Override
@@ -284,7 +289,7 @@ public class KnoxCollector extends Collector {
 
         @Override
         String[] getLabels() {
-            return new String[]{ACTION_WEBHDFS_STATUS, knoxUrl, username, statusPath};
+            return labels;
         }
     }
 
@@ -301,6 +306,7 @@ public class KnoxCollector extends Collector {
         private final String query;
         private final String username;
         private final String password;
+        private final String[] labels;
 
 
         HiveQueryAction(String jdbcUrl, String query, String username, String password) {
@@ -308,6 +314,9 @@ public class KnoxCollector extends Collector {
             this.query = query;
             this.username = username;
             this.password = password;
+            labels = new String[]{ACTION_HIVE_QUERY,
+                    jdbcUrl.replaceAll("trustStorePassword=.*?", ""), // Filter out security critical info
+                    username, query};
         }
 
         @Override
@@ -332,7 +341,7 @@ public class KnoxCollector extends Collector {
 
         @Override
         String[] getLabels() {
-            return new String[]{ACTION_HIVE_QUERY, jdbcUrl, username, query};
+            return labels;
         }
     }
 }
