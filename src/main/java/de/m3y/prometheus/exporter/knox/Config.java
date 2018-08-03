@@ -8,6 +8,7 @@ public class Config {
     private String defaultPassword;
     private WebHdfsService[] webHdfsServices;
     private HiveService[] hiveServices;
+    private HBaseService[] hbaseServices;
 
     public abstract static class KnoxService {
         private String username;
@@ -27,6 +28,18 @@ public class Config {
 
         public void setPassword(String password) {
             this.password = password;
+        }
+    }
+
+    public static class HBaseService extends KnoxService {
+        private String knoxUrl;
+
+        public String getKnoxUrl() {
+            return knoxUrl;
+        }
+
+        public void setKnoxUrl(String knoxUrl) {
+            this.knoxUrl = knoxUrl;
         }
     }
 
@@ -120,6 +133,14 @@ public class Config {
 
     public void setHiveServices(HiveService[] hiveServices) {
         this.hiveServices = hiveServices;
+    }
+
+    public HBaseService[] getHbaseServices() {
+        return hbaseServices;
+    }
+
+    public void setHbaseServices(HBaseService[] hbaseServices) {
+        this.hbaseServices = hbaseServices;
     }
 }
 

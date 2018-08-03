@@ -69,6 +69,12 @@ public class WebServerIT {
         assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",quantile=\"0.99\",}");
         assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
         assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");
+        // HBase
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",quantile=\"0.5\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",quantile=\"0.95\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",quantile=\"0.99\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_count{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",}");
+        assertThat(body).contains("knox_exporter_ops_duration_seconds_sum{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",}");
 
         // knox_exporter_ops_errors_total
         assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",}");

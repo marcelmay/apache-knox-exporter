@@ -19,3 +19,7 @@ webHdfsServices:
   statusPaths: ['/', '/datalake']
 - knoxUrl: 'https://my-knox-server/gateway/another-cluster'
   statusPaths: ['/']
+
+# One or more HBase endpoints. Performs a status operation.
+hbaseServices:
+- knoxUrl: 'https://my-knox-server/gateway/default'

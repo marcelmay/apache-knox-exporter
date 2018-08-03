@@ -13,6 +13,7 @@ import io.prometheus.client.Summary;
 import org.apache.hive.jdbc.HiveDriver;
 import org.apache.knox.gateway.shell.BasicResponse;
 import org.apache.knox.gateway.shell.Hadoop;
+import org.apache.knox.gateway.shell.hbase.HBase;
 import org.apache.knox.gateway.shell.hdfs.Hdfs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class KnoxCollector extends Collector {
             .register();
     private static final String ACTION_HIVE_QUERY = "hive_query";
     private static final String ACTION_WEBHDFS_STATUS = "webhdfs_status";
+    private static final String ACTION_HBASE_STATUS = "hbase_status";
 
     private final ConfigLoader configLoader;
     private final ThreadPoolExecutor executorService;
@@ -143,10 +145,12 @@ public class KnoxCollector extends Collector {
                 username = config.getDefaultUsername();
             }
             for (String statusPath : webHdfsService.getStatusPaths()) {
-                newActions.add(new WebHdfsStatusAction(webHdfsService.getKnoxUrl(), statusPath, username, password));
+                final WebHdfsStatusAction webHdfsStatusAction = new WebHdfsStatusAction(webHdfsService.getKnoxUrl(),
+                        statusPath, username, password);
+                newActions.add(webHdfsStatusAction);
 
                 // https://www.robustperception.io/existential-issues-with-metrics
-                KNOX_OPS_ERRORS.labels(ACTION_WEBHDFS_STATUS, webHdfsService.getKnoxUrl(), username, statusPath);
+                KNOX_OPS_ERRORS.labels(webHdfsStatusAction.getLabels());
             }
         }
 
@@ -160,11 +164,29 @@ public class KnoxCollector extends Collector {
                 username = config.getDefaultUsername();
             }
             for (String query : hiveService.getQueries()) {
-                newActions.add(new HiveQueryAction(hiveService.getJdbcUrl(), query, username, password));
+                final HiveQueryAction hiveQueryAction = new HiveQueryAction(hiveService.getJdbcUrl(),
+                        query, username, password);
+                newActions.add(hiveQueryAction);
 
                 // https://www.robustperception.io/existential-issues-with-metrics
-                KNOX_OPS_ERRORS.labels(ACTION_HIVE_QUERY, hiveService.getJdbcUrl(), username, query);
+                KNOX_OPS_ERRORS.labels(hiveQueryAction.getLabels());
             }
+        }
+
+        for(Config.HBaseService hBaseService : config.getHbaseServices()) {
+            String password = hBaseService.getPassword();
+            if (null == password) {
+                password = config.getDefaultPassword();
+            }
+            String username = hBaseService.getUsername();
+            if (null == username) {
+                username = config.getDefaultUsername();
+            }
+
+            final HbaseStatusAction hbaseStatusAction = new HbaseStatusAction(hBaseService.getKnoxUrl(), username, password);
+            newActions.add(hbaseStatusAction);
+            // https://www.robustperception.io/existential-issues-with-metrics
+            KNOX_OPS_ERRORS.labels(hbaseStatusAction.getLabels());
         }
 
         return newActions;
@@ -190,6 +212,42 @@ public class KnoxCollector extends Collector {
         abstract Boolean perform();
 
         abstract String[] getLabels();
+    }
+
+    static class HbaseStatusAction extends MetricAction {
+        private final String knoxUrl;
+        private final String username;
+        private final String password;
+
+        HbaseStatusAction(String knoxUrl, String username, String password) {
+            this.knoxUrl = knoxUrl;
+            this.username = username;
+            this.password = password;
+        }
+
+        @Override
+        Boolean perform() {
+            try (final Hadoop hadoop = Hadoop.login(knoxUrl, username, password)) {
+                try (BasicResponse basicResponse = HBase.session(hadoop).status().now()) {
+                    if (basicResponse.getStatusCode() == 200) {
+                        return Boolean.TRUE;
+                    } else if (LOGGER.isDebugEnabled()) {
+                        LOGGER.debug("Failed HBase status action using knox url {}. " +
+                                        " Response status code is {}, body is {}",
+                                knoxUrl,
+                                basicResponse.getStatusCode(), basicResponse.getString());
+                    }
+                }
+            } catch (IOException | URISyntaxException e) {
+                LOGGER.warn("Failed to perform HBase status action: {}", e.getMessage());
+            }
+            return Boolean.FALSE;
+        }
+
+        @Override
+        String[] getLabels() {
+            return new String[]{ACTION_HBASE_STATUS, knoxUrl, username, "-"};
+        }
     }
 
     static class WebHdfsStatusAction extends MetricAction {

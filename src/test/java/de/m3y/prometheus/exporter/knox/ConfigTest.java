@@ -43,5 +43,9 @@ public class ConfigTest {
         assertThat(webHdfsServices[0].getStatusPaths()).isEqualTo(new String[]{"/", "/datalake"});
         assertThat(webHdfsServices[1].getKnoxUrl()).isEqualTo("https://my-knox-server/gateway/another-cluster");
         assertThat(webHdfsServices[1].getStatusPaths()).isEqualTo(new String[]{"/"});
+
+        Config.HBaseService[] hBaseServices = config.getHbaseServices();
+        assertThat(hBaseServices.length).isEqualTo(1);
+        assertThat(hBaseServices[0].getKnoxUrl()).isEqualTo("https://localhost:8443/gateway/default");
     }
 }
