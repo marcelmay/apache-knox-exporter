@@ -315,7 +315,7 @@ public class KnoxCollector extends Collector {
             this.username = username;
             this.password = password;
             labels = new String[]{ACTION_HIVE_QUERY,
-                    jdbcUrl.replaceAll("trustStorePassword=.*?", ""), // Filter out security critical info
+                    jdbcUrl.replaceAll("trustStorePassword=.*?;", ""), // Filter out security critical info
                     username, query};
         }
 
