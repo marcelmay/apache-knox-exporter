@@ -23,7 +23,7 @@ For building:
 
 For running:
 * JRE 8 for running
-* Tested with Knox 1.0/0.12 and Hive JDBC 1.2.2
+* Tested with Knox 1.1/0.12 and Hive JDBC 1.2.2
 
 ## Downloading
 
@@ -64,10 +64,10 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   - knoxUrl: 'https://my-knox-server/gateway/default'
   ```
 
-  The exporter uses [Knox Shell](https://knox.apache.org/books/knox-1-0-0/user-guide.html#Client+DSL+and+SDK+Details)
+  The exporter uses [Knox Shell](https://knox.apache.org/books/knox-1-1-0/user-guide.html#Client+DSL+and+SDK+Details)
   for accessing Knox, and [Hive JDBC](https://cwiki.apache.org/confluence/display/Hive/HiveServer2+Clients#HiveServer2Clients-JDBC).
 
-  Use the following Knox [environment variables](https://knox.apache.org/books/knox-1-0-0/user-guide.html#Basics)
+  Use the following Knox [environment variables](https://knox.apache.org/books/knox-1-1-0/user-guide.html#Basics)
   for configuring TLS and Knox/WebHDFS (if not trusted by JDK):
   * KNOX_CLIENT_TRUSTSTORE_DIR - the directory path to your JSK containing the Knox certificate
   * KNOX_CLIENT_TRUSTSTORE_FILENAME - the JKS filename
