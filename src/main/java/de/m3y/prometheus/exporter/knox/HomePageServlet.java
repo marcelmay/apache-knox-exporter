@@ -39,22 +39,28 @@ public class HomePageServlet extends HttpServlet {
                 + "<li>WebHDFS services"
                 + "<ul>");
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
-            buf.append("<li>Knox URL : ").append(webHdfsService.getKnoxUrl()).append("</li>")
+            buf.append("<li><ul>")
+                    .append("<li>Knox URL : ").append(webHdfsService.getKnoxUrl()).append("</li>")
                     .append("<li>Username (default override) : ").append(getEmtpyStringIfNull(webHdfsService.getUsername())).append("</li>")
-                    .append("<li>Status Path : ").append(Arrays.toString(webHdfsService.getStatusPaths())).append("</li>");
+                    .append("<li>Status Path : ").append(Arrays.toString(webHdfsService.getStatusPaths())).append("</li>")
+                    .append("</ul></li>");
         }
         buf.append("</ul></li>")
                 .append("<li>HBase services<ul>");
         for (Config.HBaseService hBaseService : config.getHbaseServices()) {
-            buf.append("<li>Knox URL : ").append(hBaseService.getKnoxUrl()).append("</li>")
-                    .append("<li>Username (default override) : ").append(getEmtpyStringIfNull(hBaseService.getUsername())).append("</li>");
+            buf.append("<li><ul>")
+                    .append("<li>Knox URL : ").append(hBaseService.getKnoxUrl()).append("</li>")
+                    .append("<li>Username (default override) : ").append(getEmtpyStringIfNull(hBaseService.getUsername())).append("</li>")
+                    .append("</ul></li>");
         }
         buf.append("</ul></li>")
                 .append("<li>Hive services<ul>");
         for (Config.HiveService hiveService : config.getHiveServices()) {
-            buf.append("<li>JDBC URL : ").append(hiveService.getJdbcUrl()).append("</li>")
+            buf.append("<li><ul>")
+                    .append("<li>JDBC URL : ").append(hiveService.getJdbcUrl()).append("</li>")
                     .append("<li>Username  (default override) : ").append(getEmtpyStringIfNull(hiveService.getUsername())).append("</li>")
-                    .append("<li>Queries : ").append(Arrays.toString(hiveService.getQueries())).append("</li>");
+                    .append("<li>Queries : ").append(Arrays.toString(hiveService.getQueries())).append("</li>")
+                    .append("</ul></li>");
         }
         buf.append("</ul></li></html>");
         resp.setContentType("text/html");

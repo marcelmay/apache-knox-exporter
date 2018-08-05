@@ -16,12 +16,12 @@ public class WebServerIT {
     private static WebServer webServer;
     private static String exporterBaseUrl;
     private static OkHttpClient client;
-    private static final File configFile = new File("src/test/resources/config-it.yml");
+    private static final File CONFIG_FILE = new File("src/test/resources/config-it.yml");
+    private static final ConfigLoader CONFIG_LOADER = ConfigLoader.forFile(CONFIG_FILE);
 
     @BeforeClass
     public static void setUp() throws Exception {
-        final ConfigLoader configLoader = ConfigLoader.forFile(configFile);
-        webServer = new WebServer().configure(configLoader, "localhost", 7772);
+        webServer = new WebServer().configure(CONFIG_LOADER, "localhost", 7772);
         webServer.start();
         exporterBaseUrl = "http://localhost:7772";
         client = new OkHttpClient();
@@ -96,9 +96,17 @@ public class WebServerIT {
         assertThat(body).contains("SCM version :");
 
         // Config options
+        assertThat(body).contains("default username : foo");
+
+        assertThat(body).contains("WebHDFS services");
         assertThat(body).contains("Knox URL : https://localhost:8443/gateway/default");
-        assertThat(body).contains("username : foo");
         assertThat(body).contains("Status Path : [/]");
+
+        assertThat(body).contains("HBase services");
+
+        assertThat(body).contains("Hive services");
+        assertThat(body).contains("JDBC URL : jdbc:hive2://localhost:10000/default");
+        assertThat(body).contains("Queries : [SELECT current_database()]");
     }
 
     private Response getResponse(String url) throws IOException {
