@@ -136,17 +136,11 @@ public class KnoxCollector extends Collector {
         List<Callable<Boolean>> newActions = new ArrayList<>();
 
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
-            String password = webHdfsService.getPassword();
-            if (null == password) {
-                password = config.getDefaultPassword();
-            }
-            String username = webHdfsService.getUsername();
-            if (null == username) {
-                username = config.getDefaultUsername();
-            }
             for (String statusPath : webHdfsService.getStatusPaths()) {
                 final WebHdfsStatusAction webHdfsStatusAction = new WebHdfsStatusAction(webHdfsService.getKnoxUrl(),
-                        statusPath, username, password);
+                        statusPath,
+                        handleDefaultValue(webHdfsService.getUsername(), config.getDefaultUsername()),
+                        handleDefaultValue(webHdfsService.getPassword(), config.getDefaultPassword()));
                 newActions.add(webHdfsStatusAction);
 
                 // https://www.robustperception.io/existential-issues-with-metrics
@@ -155,17 +149,11 @@ public class KnoxCollector extends Collector {
         }
 
         for (Config.HiveService hiveService : config.getHiveServices()) {
-            String password = hiveService.getPassword();
-            if (null == password) {
-                password = config.getDefaultPassword();
-            }
-            String username = hiveService.getUsername();
-            if (null == username) {
-                username = config.getDefaultUsername();
-            }
             for (String query : hiveService.getQueries()) {
                 final HiveQueryAction hiveQueryAction = new HiveQueryAction(hiveService.getJdbcUrl(),
-                        query, username, password);
+                        query,
+                        handleDefaultValue(hiveService.getUsername(), config.getDefaultUsername()),
+                        handleDefaultValue(hiveService.getPassword(), config.getDefaultPassword()));
                 newActions.add(hiveQueryAction);
 
                 // https://www.robustperception.io/existential-issues-with-metrics
@@ -173,17 +161,10 @@ public class KnoxCollector extends Collector {
             }
         }
 
-        for(Config.HBaseService hBaseService : config.getHbaseServices()) {
-            String password = hBaseService.getPassword();
-            if (null == password) {
-                password = config.getDefaultPassword();
-            }
-            String username = hBaseService.getUsername();
-            if (null == username) {
-                username = config.getDefaultUsername();
-            }
-
-            final HbaseStatusAction hbaseStatusAction = new HbaseStatusAction(hBaseService.getKnoxUrl(), username, password);
+        for (Config.HBaseService hBaseService : config.getHbaseServices()) {
+            final HbaseStatusAction hbaseStatusAction = new HbaseStatusAction(hBaseService.getKnoxUrl(),
+                    handleDefaultValue(hBaseService.getUsername(), config.getDefaultUsername()),
+                    handleDefaultValue(hBaseService.getPassword(), config.getDefaultPassword()));
             newActions.add(hbaseStatusAction);
 
             // https://www.robustperception.io/existential-issues-with-metrics
@@ -191,6 +172,13 @@ public class KnoxCollector extends Collector {
         }
 
         return newActions;
+    }
+
+    private String handleDefaultValue(String value, String defaultValue) {
+        if (null == value) {
+            return defaultValue;
+        }
+        return value;
     }
 
     abstract static class MetricAction implements Callable<Boolean> {
@@ -265,7 +253,7 @@ public class KnoxCollector extends Collector {
             this.username = username;
             this.password = password;
             this.statusPath = statusPath;
-            labels =  new String[]{ACTION_WEBHDFS_STATUS, knoxUrl, username, statusPath};
+            labels = new String[]{ACTION_WEBHDFS_STATUS, knoxUrl, username, statusPath};
         }
 
         @Override

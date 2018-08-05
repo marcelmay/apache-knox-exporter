@@ -41,7 +41,8 @@ public class HomePageServlet extends HttpServlet {
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             buf.append("<li><ul>")
                     .append("<li>Knox URL : ").append(webHdfsService.getKnoxUrl()).append("</li>")
-                    .append("<li>Username (default override) : ").append(getEmtpyStringIfNull(webHdfsService.getUsername())).append("</li>")
+                    .append("<li>Username (default override) : ")
+                    .append(getEmtpyStringIfNull(webHdfsService.getUsername())).append("</li>")
                     .append("<li>Status Path : ").append(Arrays.toString(webHdfsService.getStatusPaths())).append("</li>")
                     .append("</ul></li>");
         }
@@ -50,7 +51,8 @@ public class HomePageServlet extends HttpServlet {
         for (Config.HBaseService hBaseService : config.getHbaseServices()) {
             buf.append("<li><ul>")
                     .append("<li>Knox URL : ").append(hBaseService.getKnoxUrl()).append("</li>")
-                    .append("<li>Username (default override) : ").append(getEmtpyStringIfNull(hBaseService.getUsername())).append("</li>")
+                    .append("<li>Username (default override) : ")
+                    .append(getEmtpyStringIfNull(hBaseService.getUsername())).append("</li>")
                     .append("</ul></li>");
         }
         buf.append("</ul></li>")
@@ -58,7 +60,8 @@ public class HomePageServlet extends HttpServlet {
         for (Config.HiveService hiveService : config.getHiveServices()) {
             buf.append("<li><ul>")
                     .append("<li>JDBC URL : ").append(hiveService.getJdbcUrl()).append("</li>")
-                    .append("<li>Username  (default override) : ").append(getEmtpyStringIfNull(hiveService.getUsername())).append("</li>")
+                    .append("<li>Username  (default override) : ")
+                    .append(getEmtpyStringIfNull(hiveService.getUsername())).append("</li>")
                     .append("<li>Queries : ").append(Arrays.toString(hiveService.getQueries())).append("</li>")
                     .append("</ul></li>");
         }
