@@ -4,7 +4,7 @@ import java.io.File;
 import java.net.InetSocketAddress;
 
 import io.prometheus.client.exporter.MetricsServlet;
-import io.prometheus.client.hotspot.MemoryPoolsExports;
+import io.prometheus.client.hotspot.DefaultExports;
 import org.apache.log4j.Level;
 import org.apache.log4j.spi.RootLogger;
 import org.eclipse.jetty.server.Server;
@@ -21,7 +21,7 @@ public class WebServer {
         knoxCollector = new KnoxCollector(configLoader);
         knoxCollector.register();
 
-        new MemoryPoolsExports().register();
+        DefaultExports.initialize();
 
         final BuildInfoExporter buildInfo = new BuildInfoExporter("knox_exporter_",
                 "knox_exporter").register();
