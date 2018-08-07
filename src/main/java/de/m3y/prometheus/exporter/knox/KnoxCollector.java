@@ -43,7 +43,7 @@ public class KnoxCollector extends Collector {
             .labelNames("action", "uri", "user", "param")
             .register();
 
-    private static final Summary METRIC_OPS_LATENCY = Summary.build()
+    private static final Summary KNOX_OPS_LATENCY = Summary.build()
             .name(METRIC_PREFIX + "ops_duration_seconds")
             .help("Ops duration")
             .labelNames("action", "uri", "user", "param")
@@ -57,7 +57,7 @@ public class KnoxCollector extends Collector {
 
     private final ConfigLoader configLoader;
     private final ThreadPoolExecutor executorService;
-    private List<Callable<Boolean>> actions;
+    private List<MetricAction> actions;
     private Config config;
 
     KnoxCollector(ConfigLoader configLoader) {
@@ -132,8 +132,8 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private List<Callable<Boolean>> configureActions(Config config) {
-        List<Callable<Boolean>> newActions = new ArrayList<>();
+    private List<MetricAction> configureActions(Config config) {
+        List<MetricAction> newActions = new ArrayList<>();
 
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             for (String statusPath : webHdfsService.getStatusPaths()) {
@@ -185,7 +185,7 @@ public class KnoxCollector extends Collector {
         @Override
         public Boolean call() {
             final String[] labels = getLabels();
-            try (final Summary.Timer timer = METRIC_OPS_LATENCY.labels(labels).startTimer()) {
+            try (final Summary.Timer timer = KNOX_OPS_LATENCY.labels(labels).startTimer()) {
                 if (Boolean.FALSE.equals(perform())) {
                     KNOX_OPS_ERRORS.labels(labels).inc();
                 }
