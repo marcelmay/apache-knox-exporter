@@ -3,8 +3,13 @@ package de.m3y.prometheus.exporter.knox;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
@@ -58,12 +63,11 @@ public class KnoxCollector extends Collector {
     private final ConfigLoader configLoader;
     private final ThreadPoolExecutor executorService;
     private List<MetricAction> actions;
-    private Config config;
 
     KnoxCollector(ConfigLoader configLoader) {
         this.configLoader = configLoader;
 
-        config = configLoader.getOrLoadIfModified();
+        Config config = configLoader.getOrLoadIfModified();
         actions = configureActions(config);
         executorService = new ThreadPoolExecutor(actions.size(), actions.size(),
                 0L, TimeUnit.MILLISECONDS,
@@ -107,15 +111,7 @@ public class KnoxCollector extends Collector {
     }
 
     private void scrapeKnox() {
-        if (configLoader.hasModifications()) {
-            config = configLoader.getOrLoadIfModified();
-            actions = configureActions(config);
-            if (actions.size() != executorService.getMaximumPoolSize()) {
-                executorService.setMaximumPoolSize(actions.size());
-                executorService.setCorePoolSize(actions.size());
-            }
-            LOGGER.info("Reloaded config.");
-        }
+        reloadConfigIfRequired();
 
         try {
             executorService.invokeAll(actions,
@@ -129,6 +125,18 @@ public class KnoxCollector extends Collector {
             METRIC_SCRAPE_ERROR.inc();
             LOGGER.error("Failed to invoke actions", ex);
             Thread.currentThread().interrupt();
+        }
+    }
+
+    private void reloadConfigIfRequired() {
+        if (configLoader.hasModifications()) {
+            Config config = configLoader.getOrLoadIfModified();
+            actions = configureActions(config);
+            if (actions.size() != executorService.getMaximumPoolSize()) {
+                executorService.setMaximumPoolSize(actions.size());
+                executorService.setCorePoolSize(actions.size());
+            }
+            LOGGER.info("Reloaded and reconfigured.");
         }
     }
 
