@@ -4,6 +4,8 @@ package de.m3y.prometheus.exporter.knox;
  * Config options for collector.
  */
 public class Config {
+    private static final int DEFAULT_TIMEOUT = 60;
+    private int timeout = DEFAULT_TIMEOUT;
     private String defaultUsername;
     private String defaultPassword;
     private WebHdfsService[] webHdfsServices;
@@ -101,6 +103,14 @@ public class Config {
             webHdfsCheck.setStatusPaths(statusPaths);
             return webHdfsCheck;
         }
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
     }
 
     public String getDefaultUsername() {

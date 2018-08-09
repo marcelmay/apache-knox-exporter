@@ -2,6 +2,8 @@
 defaultUsername: 'foo'
 # Default password for user
 defaultPassword: '***'
+# Timeout in seconds
+timeout: 59
 
 # One or more Hive services and queries
 hiveServices:

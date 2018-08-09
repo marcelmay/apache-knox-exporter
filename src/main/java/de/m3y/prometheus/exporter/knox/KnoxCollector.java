@@ -89,33 +89,31 @@ public class KnoxCollector extends Collector {
 
     synchronized void shutdown() {
         final int timeout = 5;
-        if (null != executorService) {
-            LOGGER.info("Shutting down executor service ...");
-            executorService.shutdown(); // Disable new tasks from being submitted
-            try {
-                // Wait a while for existing tasks to terminate
-                if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow(); // Cancel currently executing tasks
-                    // Wait a while for tasks to respond to being cancelled
-                    if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS))
-                        LOGGER.error("Pool did not terminate after a timeout of {}s", timeout);
-                }
-            } catch (InterruptedException ie) {
-                LOGGER.warn("Executor service failed to await termination of running tasks", ie);
-                // (Re-)Cancel if current thread also interrupted
-                executorService.shutdownNow();
-                // Preserve interrupt status
-                Thread.currentThread().interrupt();
+        LOGGER.info("Shutting down executor service ...");
+        executorService.shutdown(); // Disable new tasks from being submitted
+        try {
+            // Wait a while for existing tasks to terminate
+            if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS)) {
+                executorService.shutdownNow(); // Cancel currently executing tasks
+                // Wait a while for tasks to respond to being cancelled
+                if (!executorService.awaitTermination(timeout, TimeUnit.SECONDS))
+                    LOGGER.error("Pool did not terminate after a timeout of {}s", timeout);
             }
+        } catch (InterruptedException ie) {
+            LOGGER.warn("Executor service failed to await termination of running tasks", ie);
+            // (Re-)Cancel if current thread also interrupted
+            executorService.shutdownNow();
+            // Preserve interrupt status
+            Thread.currentThread().interrupt();
         }
     }
 
     private void scrapeKnox() {
-        reloadConfigIfRequired();
+        Config config = reloadConfigIfRequired();
 
         try {
             executorService.invokeAll(actions,
-                    55 /* 60s is usually a default timeout for nginx etc. */, TimeUnit.SECONDS)
+                    config.getTimeout(), TimeUnit.SECONDS)
                     .forEach(callable -> {
                         if (!callable.isDone()) { // Terminated -> error
                             METRIC_SCRAPE_ERROR.inc();
@@ -128,7 +126,7 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private void reloadConfigIfRequired() {
+    private Config reloadConfigIfRequired() {
         if (configLoader.hasModifications()) {
             Config config = configLoader.getOrLoadIfModified();
             actions = configureActions(config);
@@ -138,6 +136,7 @@ public class KnoxCollector extends Collector {
             }
             LOGGER.info("Reloaded and reconfigured.");
         }
+        return configLoader.getCurrentConfig();
     }
 
     private List<MetricAction> configureActions(Config config) {

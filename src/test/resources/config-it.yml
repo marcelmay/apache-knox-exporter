@@ -2,6 +2,8 @@
 defaultUsername: 'foo'
 # Password for authenticating user
 defaultPassword: '***'
+# Timeout in seconds
+timeout: 55
 
 webHdfsServices:
 - knoxUrl: 'https://localhost:8443/gateway/default'

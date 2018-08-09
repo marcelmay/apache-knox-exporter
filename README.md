@@ -45,6 +45,8 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   # Default password for authenticating Knox user.
   # Protect this config file read access with file permissions!
   defaultPassword : '***'
+  # Timeout in seconds
+  timeout: 50
   
   # A list of WebHDFS services 
   webHdfsServices:
