@@ -36,7 +36,7 @@ public class HomePageServlet extends HttpServlet {
                 + "</ul>"
                 + "<h2>Configuration</h2><ul>"
                 + "<li>default username : ").append(config.getDefaultUsername()).append("</li>"
-                + "<li>timeout : ").append(config.getTimeout()).append("</li>"
+                + "<li>timeout : ").append(config.getTimeout()).append("s</li>"
                 + "<li>WebHDFS services"
                 + "<ul>");
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
