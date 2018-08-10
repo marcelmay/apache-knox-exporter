@@ -12,6 +12,8 @@ The exporter collects per request
 * error count 
 * duration summary with 0.5/0.95/0.99 quantiles
 
+![Overview](apache_knox_exporter_overview.png)
+
 ## Roadmap
 
 See [issues](../../issues)
