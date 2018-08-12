@@ -73,7 +73,7 @@ public interface ConfigLoader {
             }
         }
 
-        public boolean hasModifications() {
+        public synchronized boolean hasModifications() {
             return filename.lastModified() > lastModifiedTimestamp;
         }
     }

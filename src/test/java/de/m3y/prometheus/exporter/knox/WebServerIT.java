@@ -2,17 +2,24 @@ package de.m3y.prometheus.exporter.knox;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
 
+import io.prometheus.client.Counter;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class WebServerIT {
+    private static final Logger log = LoggerFactory.getLogger(WebServerIT.class);
     private static WebServer webServer;
     private static String exporterBaseUrl;
     private static OkHttpClient client;
@@ -21,6 +28,7 @@ public class WebServerIT {
 
     @BeforeClass
     public static void setUp() throws Exception {
+        log.warn("setUp...");
         webServer = new WebServer().configure(CONFIG_LOADER, "localhost", 7772);
         webServer.start();
         exporterBaseUrl = "http://localhost:7772";
@@ -29,8 +37,10 @@ public class WebServerIT {
 
     @AfterClass
     public static void tearDown() throws Exception {
+        log.warn("tearDown...");
         if (null != webServer) {
             webServer.shutdown();
+            webServer = null;
         }
     }
 

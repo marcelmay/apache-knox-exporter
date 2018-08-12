@@ -4,20 +4,17 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Summary;
 import org.apache.hive.jdbc.HiveDriver;
-import org.apache.knox.gateway.shell.BasicResponse;
-import org.apache.knox.gateway.shell.Hadoop;
+import org.apache.knox.gateway.shell.*;
 import org.apache.knox.gateway.shell.hbase.HBase;
 import org.apache.knox.gateway.shell.hdfs.Hdfs;
 import org.slf4j.Logger;
@@ -44,13 +41,13 @@ public class KnoxCollector extends Collector {
 
     private static final Counter KNOX_OPS_ERRORS = Counter.build()
             .name(METRIC_PREFIX + "ops_errors_total")
-            .help("Counts errors.")
+            .help("Ops error counts.")
             .labelNames("action", "uri", "user", "param")
             .register();
 
-    private static final Summary KNOX_OPS_LATENCY = Summary.build()
+    private static final Summary KNOX_OPS_DURATION = Summary.build()
             .name(METRIC_PREFIX + "ops_duration_seconds")
-            .help("Ops duration")
+            .help("Duration of successful and failed operations")
             .labelNames("action", "uri", "user", "param")
             .quantile(0.5, 0.05)
             .quantile(0.95, 0.01)
@@ -62,23 +59,20 @@ public class KnoxCollector extends Collector {
 
     private final ConfigLoader configLoader;
     private final ThreadPoolExecutor executorService;
-    private List<MetricAction> actions;
 
     KnoxCollector(ConfigLoader configLoader) {
         this.configLoader = configLoader;
 
-        Config config = configLoader.getOrLoadIfModified();
-        actions = configureActions(config);
-        executorService = new ThreadPoolExecutor(actions.size(), actions.size(),
-                0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>());
+        // Initialize with a default size. Will be later reconfigured depending on
+        // exporter configuration.
+        executorService = new CustomExecutor();
     }
 
     public synchronized List<MetricFamilySamples> collect() {
         try (Gauge.Timer timer = METRIC_SCRAPE_DURATION.startTimer()) {
             METRIC_SCRAPE_REQUESTS.inc();
 
-            scrapeKnox();
+            scrapeKnox(reloadConfigIfRequired());
         } catch (Exception e) {
             METRIC_SCRAPE_ERROR.inc();
             LOGGER.error("Scrape failed", e);
@@ -108,17 +102,18 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private void scrapeKnox() {
-        Config config = reloadConfigIfRequired();
+    private void scrapeKnox(Config config) {
+        final List<AbstractBaseAction> actions = configureActions(config);
+        if (actions.size() != executorService.getMaximumPoolSize()) {
+            executorService.setCorePoolSize(actions.size());
+            executorService.setMaximumPoolSize(actions.size());
+        }
 
         try {
-            executorService.invokeAll(actions,
-                    config.getTimeout(), TimeUnit.SECONDS)
-                    .forEach(callable -> {
-                        if (!callable.isDone()) { // Terminated -> error
-                            METRIC_SCRAPE_ERROR.inc();
-                        }
-                    });
+            final int timeout = config.getTimeout();
+            List<Future<Boolean>> futures = executorService.invokeAll(actions,
+                    timeout, TimeUnit.SECONDS);
+            updateMetrics(futures, actions);
         } catch (InterruptedException ex) {
             METRIC_SCRAPE_ERROR.inc();
             LOGGER.error("Failed to invoke actions", ex);
@@ -126,28 +121,64 @@ public class KnoxCollector extends Collector {
         }
     }
 
+    private void updateMetrics(List<Future<Boolean>> futures, List<AbstractBaseAction> actions) {
+        for (int i = 0; i < futures.size(); i++) {
+            final Future<Boolean> future = futures.get(i);
+            final AbstractBaseAction action = actions.get(i);
+            updateMetrics(future, action);
+        }
+    }
+
+    private void updateMetrics(Future<Boolean> future, AbstractBaseAction action) {
+        if (future instanceof CustomExecutor.TimedFutureTask) {
+            // convert ns to seconds
+            double durationSeconds = ((CustomExecutor.TimedFutureTask) future).getDuration() / 1000000.0;
+
+            if (future.isCancelled()) {
+                // Timed out => ops error
+                KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
+                KNOX_OPS_DURATION.labels(action.getLabels())
+                        .observe(durationSeconds);
+            } else {
+                try {
+                    Boolean result = future.get();
+                    KNOX_OPS_DURATION.labels(action.getLabels())
+                            .observe(durationSeconds);
+                    if (!result.booleanValue()) {
+                        // Not OK => ops error
+                        KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
+                    }
+                } catch (ExecutionException | InterruptedException | CancellationException e) {
+                    // Should not happen ...
+                    LOGGER.error("Can not get result for action " + action, e);
+                    KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
+                    KNOX_OPS_DURATION.labels(action.getLabels()).observe(durationSeconds);
+                    METRIC_SCRAPE_ERROR.inc();
+                }
+            }
+        } else {
+            LOGGER.warn("Unexpected future {}, expected TimedFutureTask", future.getClass());
+        }
+    }
+
     private Config reloadConfigIfRequired() {
         if (configLoader.hasModifications()) {
-            Config config = configLoader.getOrLoadIfModified();
-            actions = configureActions(config);
-            if (actions.size() != executorService.getMaximumPoolSize()) {
-                executorService.setMaximumPoolSize(actions.size());
-                executorService.setCorePoolSize(actions.size());
-            }
+            configLoader.getOrLoadIfModified();
             LOGGER.info("Reloaded and reconfigured.");
         }
         return configLoader.getCurrentConfig();
     }
 
-    private List<MetricAction> configureActions(Config config) {
-        List<MetricAction> newActions = new ArrayList<>();
+    private List<AbstractBaseAction> configureActions(Config config) {
+        List<AbstractBaseAction> newActions = new ArrayList<>();
 
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             for (String statusPath : webHdfsService.getStatusPaths()) {
                 final WebHdfsStatusAction webHdfsStatusAction = new WebHdfsStatusAction(webHdfsService.getKnoxUrl(),
                         statusPath,
                         handleDefaultValue(webHdfsService.getUsername(), config.getDefaultUsername()),
-                        handleDefaultValue(webHdfsService.getPassword(), config.getDefaultPassword()));
+                        handleDefaultValue(webHdfsService.getPassword(), config.getDefaultPassword()),
+                        config.getTimeout());
                 newActions.add(webHdfsStatusAction);
 
                 // https://www.robustperception.io/existential-issues-with-metrics
@@ -155,23 +186,28 @@ public class KnoxCollector extends Collector {
             }
         }
 
-        for (Config.HiveService hiveService : config.getHiveServices()) {
-            for (String query : hiveService.getQueries()) {
-                final HiveQueryAction hiveQueryAction = new HiveQueryAction(hiveService.getJdbcUrl(),
-                        query,
-                        handleDefaultValue(hiveService.getUsername(), config.getDefaultUsername()),
-                        handleDefaultValue(hiveService.getPassword(), config.getDefaultPassword()));
-                newActions.add(hiveQueryAction);
+        final Config.HiveService[] hiveServices = config.getHiveServices();
+        if (null != hiveServices && hiveServices.length > 0) {
+            initDriver();
+            for (Config.HiveService hiveService : hiveServices) {
+                for (String query : hiveService.getQueries()) {
+                    final HiveQueryAction hiveQueryAction = new HiveQueryAction(hiveService.getJdbcUrl(),
+                            query,
+                            handleDefaultValue(hiveService.getUsername(), config.getDefaultUsername()),
+                            handleDefaultValue(hiveService.getPassword(), config.getDefaultPassword()));
+                    newActions.add(hiveQueryAction);
 
-                // https://www.robustperception.io/existential-issues-with-metrics
-                KNOX_OPS_ERRORS.labels(hiveQueryAction.getLabels());
+                    // https://www.robustperception.io/existential-issues-with-metrics
+                    KNOX_OPS_ERRORS.labels(hiveQueryAction.getLabels());
+                }
             }
         }
 
         for (Config.HBaseService hBaseService : config.getHbaseServices()) {
             final HbaseStatusAction hbaseStatusAction = new HbaseStatusAction(hBaseService.getKnoxUrl(),
                     handleDefaultValue(hBaseService.getUsername(), config.getDefaultUsername()),
-                    handleDefaultValue(hBaseService.getPassword(), config.getDefaultPassword()));
+                    handleDefaultValue(hBaseService.getPassword(), config.getDefaultPassword()),
+                    config.getTimeout());
             newActions.add(hbaseStatusAction);
 
             // https://www.robustperception.io/existential-issues-with-metrics
@@ -188,98 +224,87 @@ public class KnoxCollector extends Collector {
         return value;
     }
 
-    abstract static class MetricAction implements Callable<Boolean> {
+    abstract static class AbstractBaseAction implements CustomExecutor.CancellableCallable<Boolean> {
+        boolean success = false;
+
         @Override
         public Boolean call() {
-            final String[] labels = getLabels();
-            try (final Summary.Timer timer = KNOX_OPS_LATENCY.labels(labels).startTimer()) {
-                if (Boolean.FALSE.equals(perform())) {
-                    KNOX_OPS_ERRORS.labels(labels).inc();
-                }
-            } catch (Exception e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Received error invoking {} : {}", labels, e);
-                }
-                KNOX_OPS_ERRORS.labels(labels).inc();
-            }
-            return Boolean.FALSE;
+            success = perform();
+            return success;
         }
 
-        abstract Boolean perform();
+        abstract boolean perform();
 
         abstract String[] getLabels();
+
+        public boolean isSuccess() {
+            return success;
+        }
     }
 
-    static class HbaseStatusAction extends MetricAction {
-        private final String knoxUrl;
-        private final String username;
-        private final String password;
+    abstract class AbstractKnoxBaseAction extends AbstractBaseAction {
+        protected final String knoxUrl;
         private final String[] labels;
+        protected final ClientContext clientContext;
+        protected Hadoop hadoop;
 
-        HbaseStatusAction(String knoxUrl, String username, String password) {
+        AbstractKnoxBaseAction(String action, String knoxUrl, String username, String password, String param, int timeout) {
+            super();
             this.knoxUrl = knoxUrl;
-            this.username = username;
-            this.password = password;
-            labels = new String[]{ACTION_HBASE_STATUS, knoxUrl, username, "-"};
+            labels = new String[]{action, knoxUrl, username, param};
+            clientContext = ClientContext.with(username, password, knoxUrl);
+            clientContext.socket().timeout(timeout);
         }
 
         @Override
-        Boolean perform() {
-            try (final Hadoop hadoop = Hadoop.login(knoxUrl, username, password)) {
-                try (BasicResponse basicResponse = HBase.session(hadoop).status().now()) {
+        public RunnableFuture newTask() {
+            return new CustomExecutor.TimedFutureTask(this) {
+                @Override
+                public boolean cancel(boolean mayInterruptIfRunning) {
+                    try {
+                        AbstractKnoxBaseAction.this.cancel();
+                    } finally {
+                        return super.cancel(mayInterruptIfRunning);
+                    }
+                }
+            };
+        }
+
+        @Override
+        boolean perform() {
+            try (Hadoop tmpHadoop = new Hadoop(clientContext)) {
+                this.hadoop = tmpHadoop;
+                final AbstractRequest<? extends BasicResponse> request = createRequest(hadoop);
+                try (BasicResponse basicResponse = request.now()) {
                     if (basicResponse.getStatusCode() == 200) {
-                        return Boolean.TRUE;
+                        return true;
                     } else if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Failed HBase status action using knox url {}. " +
+                        LOGGER.debug("Failed knox action using knox url {}. " +
                                         " Response status code is {}, body is {}",
                                 knoxUrl,
                                 basicResponse.getStatusCode(), basicResponse.getString());
                     }
                 }
-            } catch (IOException | URISyntaxException e) {
-                LOGGER.warn("Failed to perform HBase status action: {}", e.getMessage());
+            } catch (IOException | URISyntaxException | HadoopException e) {
+                LOGGER.warn("Failed to perform knox action {} : {}", Arrays.toString(labels), e.getMessage());
+            } finally {
+                this.hadoop = null;
             }
-            return Boolean.FALSE;
+            return false;
         }
+
+        protected abstract AbstractRequest<? extends BasicResponse> createRequest(Hadoop hadoop);
 
         @Override
-        String[] getLabels() {
-            return labels;
-        }
-    }
-
-    static class WebHdfsStatusAction extends MetricAction {
-        private final String knoxUrl;
-        private final String username;
-        private final String password;
-        private final String statusPath;
-        private final String[] labels;
-
-        WebHdfsStatusAction(String knoxUrl, String statusPath, String username, String password) {
-            this.knoxUrl = knoxUrl;
-            this.username = username;
-            this.password = password;
-            this.statusPath = statusPath;
-            labels = new String[]{ACTION_WEBHDFS_STATUS, knoxUrl, username, statusPath};
-        }
-
-        @Override
-        Boolean perform() {
-            try (final Hadoop hadoop = Hadoop.login(knoxUrl, username, password)) {
-                try (BasicResponse basicResponse = Hdfs.status(hadoop).file(statusPath).now()) {
-                    if (basicResponse.getStatusCode() == 200) {
-                        return Boolean.TRUE;
-                    } else if (LOGGER.isDebugEnabled()) {
-                        LOGGER.debug("Failed WebHDFS check using knox url {} and webhdf status for path {}." +
-                                        " Response status code is {}, body is {}",
-                                knoxUrl, statusPath,
-                                basicResponse.getStatusCode(), basicResponse.getString());
-                    }
+        public void cancel() {
+            if (null != hadoop) {
+                try {
+                    hadoop.close();
+                    hadoop = null;
+                } catch (IOException e) {
+                    LOGGER.warn("Failed to close hadoop. Ignored for cancelling.", e);
                 }
-            } catch (IOException | URISyntaxException e) {
-                LOGGER.warn("Failed to perform WebHDFS status action: {}", e.getMessage());
             }
-            return Boolean.FALSE;
         }
 
         @Override
@@ -288,21 +313,59 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    static class HiveQueryAction extends MetricAction {
-        static {
-            try {
-                Class.forName(HiveDriver.class.getName());
-            } catch (ClassNotFoundException e) {
-                throw new IllegalStateException("Can not load hive JDBC driver", e);
-            }
+    class HbaseStatusAction extends AbstractKnoxBaseAction {
+        HbaseStatusAction(String knoxUrl, String username, String password, int timeout) {
+            super(ACTION_HBASE_STATUS, knoxUrl, username, password, "-", timeout);
         }
 
+        protected AbstractRequest<? extends BasicResponse> createRequest(Hadoop hadoop) {
+            return HBase.session(hadoop).status();
+        }
+    }
+
+    class WebHdfsStatusAction extends AbstractKnoxBaseAction {
+        private final String statusPath;
+
+        WebHdfsStatusAction(String knoxUrl, String statusPath, String username, String password, int timeout) {
+            super(ACTION_WEBHDFS_STATUS, knoxUrl, username, password, statusPath, timeout);
+            this.statusPath = statusPath;
+        }
+
+        @Override
+        protected AbstractRequest<? extends BasicResponse> createRequest(Hadoop hadoop) {
+            return Hdfs.status(hadoop).file(statusPath);
+        }
+    }
+
+    static void initDriver() {
+        try {
+            Class.forName(HiveDriver.class.getName());
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Can not load hive JDBC driver", e);
+        }
+    }
+
+    class HiveQueryAction extends AbstractBaseAction {
         private final String jdbcUrl;
         private final String query;
         private final String username;
         private final String password;
         private final String[] labels;
+        private Connection con;
 
+        @Override
+        public RunnableFuture newTask() {
+            return new CustomExecutor.TimedFutureTask(this) {
+                @Override
+                public boolean cancel(boolean mayInterruptIfRunning) {
+                    try {
+                        HiveQueryAction.this.cancel();
+                    } finally {
+                        return super.cancel(mayInterruptIfRunning);
+                    }
+                }
+            };
+        }
 
         HiveQueryAction(String jdbcUrl, String query, String username, String password) {
             this.jdbcUrl = jdbcUrl;
@@ -310,17 +373,19 @@ public class KnoxCollector extends Collector {
             this.username = username;
             this.password = password;
             labels = new String[]{ACTION_HIVE_QUERY,
-                    jdbcUrl.replaceAll("trustStorePassword=.*?;", ""), // Filter out security critical info
+                    // Filter out security critical info
+                    jdbcUrl.replaceAll("trustStorePassword=.*?;", ""), // NOSONAR
                     username, query};
         }
 
         @Override
-        Boolean perform() {
-            try (Connection con = DriverManager.getConnection(jdbcUrl, username, password)) {
+        boolean perform() {
+            try (Connection tmpCon = DriverManager.getConnection(jdbcUrl, username, password)) {
+                this.con = tmpCon;
                 try (Statement stmt = con.createStatement()) {
                     try (ResultSet resultSet = stmt.executeQuery(query)) {
                         if (resultSet.next()) {
-                            return Boolean.TRUE;
+                            return true;
                         } else if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("No Hive ResultSet.next() to {} using query {} and user {}",
                                     jdbcUrl, query, username);
@@ -328,10 +393,22 @@ public class KnoxCollector extends Collector {
                     }
                 }
 
-            } catch (SQLException e) {
+            } catch (SQLException | NoClassDefFoundError e) {
+                LOGGER.debug("Exception while doing JDBC query {}", query, e);
                 LOGGER.warn("Could not perform jdbc action : {}", e.getMessage());
             }
-            return Boolean.FALSE;
+            return false;
+        }
+
+        @Override
+        public void cancel() {
+            if (null != con) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
+                    LOGGER.warn("Failed to close connection. Ignoring.", e);
+                }
+            }
         }
 
         @Override
@@ -339,4 +416,5 @@ public class KnoxCollector extends Collector {
             return labels;
         }
     }
+
 }

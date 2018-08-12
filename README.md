@@ -9,8 +9,8 @@ A black box [Apache Knox](http://knox.apache.org) exporter for [Prometheus](http
 * HBase status
     
 The exporter collects per request
-* error count 
-* duration summary with 0.5/0.95/0.99 quantiles
+* the error count 
+* the duration as summary with 0.5/0.95/0.99 quantiles
 
 ![Overview](apache_knox_exporter_overview.png)
 
