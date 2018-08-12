@@ -132,7 +132,7 @@ public class KnoxCollector extends Collector {
     private void updateMetrics(Future<Boolean> future, AbstractBaseAction action) {
         if (future instanceof CustomExecutor.TimedFutureTask) {
             // convert ns to seconds
-            double durationSeconds = ((CustomExecutor.TimedFutureTask) future).getDuration() / 1000000.0;
+            double durationSeconds = ((CustomExecutor.TimedFutureTask) future).getDuration() / 1000.0 / 1000.0 / 1000.0;
 
             if (future.isCancelled()) {
                 // Timed out => ops error
