@@ -253,7 +253,12 @@ public class KnoxCollector extends Collector {
             this.knoxUrl = knoxUrl;
             labels = new String[]{action, knoxUrl, username, param};
             clientContext = ClientContext.with(username, password, knoxUrl);
-            clientContext.socket().timeout(timeout);
+            final ClientContext.SocketContext socketContext = clientContext.socket();
+            if(LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Setting timeout to {}s for {}", timeout, Arrays.toString(getLabels()));
+            }
+            socketContext.timeout(timeout);
+            socketContext.reuseAddress(true);
         }
 
         @Override
