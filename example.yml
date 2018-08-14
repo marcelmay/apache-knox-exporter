@@ -4,6 +4,8 @@ defaultUsername: 'foo'
 defaultPassword: '***'
 # Timeout in seconds for service calls
 timeout: 50
+# Global JDBC Driver login timeout in seconds
+jdbcLoginTimeout : 10
 
 # One or more Hive services and queries
 hiveServices:

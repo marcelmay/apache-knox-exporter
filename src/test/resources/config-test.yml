@@ -5,6 +5,9 @@ defaultPassword: '***'
 # Timeout in seconds
 timeout: 59
 
+# Global JDBC Driver login timeout in seconds
+jdbcLoginTimeout : 10
+
 # One or more Hive services and queries
 hiveServices:
 - jdbcUrl: 'jdbc:hive2://knox-hive-server:10000/default'

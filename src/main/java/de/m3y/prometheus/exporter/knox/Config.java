@@ -11,6 +11,7 @@ public class Config {
     private WebHdfsService[] webHdfsServices;
     private HiveService[] hiveServices;
     private HBaseService[] hbaseServices;
+    private int jdbcLoginTimeout;
 
     public abstract static class KnoxService {
         private String username;
@@ -151,6 +152,14 @@ public class Config {
 
     public void setHbaseServices(HBaseService[] hbaseServices) {
         this.hbaseServices = hbaseServices;
+    }
+
+    public int getJdbcLoginTimeout() {
+        return jdbcLoginTimeout;
+    }
+
+    public void setJdbcLoginTimeout(int jdbcLoginTimeout) {
+        this.jdbcLoginTimeout = jdbcLoginTimeout;
     }
 }
 

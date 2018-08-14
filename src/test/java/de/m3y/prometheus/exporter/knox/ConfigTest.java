@@ -23,9 +23,11 @@ public class ConfigTest {
     }
 
     static void validateConfig(Config config) {
+
         assertThat(config.getDefaultPassword()).isEqualTo("***");
         assertThat(config.getDefaultUsername()).isEqualTo("foo");
         assertThat(config.getTimeout()).isEqualTo(59);
+        assertThat(config.getJdbcLoginTimeout()).isEqualTo(10);
 
         Config.HiveService[] hiveServices = config.getHiveServices();
         assertThat(hiveServices.length).isEqualTo(2);

@@ -188,7 +188,7 @@ public class KnoxCollector extends Collector {
 
         final Config.HiveService[] hiveServices = config.getHiveServices();
         if (null != hiveServices && hiveServices.length > 0) {
-            initDriver();
+            initHiveDriver(config.getJdbcLoginTimeout());
             for (Config.HiveService hiveService : hiveServices) {
                 for (String query : hiveService.getQueries()) {
                     final HiveQueryAction hiveQueryAction = new HiveQueryAction(hiveService.getJdbcUrl(),
@@ -342,7 +342,13 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    static void initDriver() {
+    static void initHiveDriver(int jdbcLoginTimeout) {
+        if(jdbcLoginTimeout>0) {
+            if(LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Setting JDBC driver login timeout to {}s", jdbcLoginTimeout);
+            }
+            DriverManager.setLoginTimeout(jdbcLoginTimeout);
+        }
         try {
             Class.forName(HiveDriver.class.getName());
         } catch (ClassNotFoundException e) {

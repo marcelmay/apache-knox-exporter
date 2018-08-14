@@ -49,6 +49,8 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   defaultPassword : '***'
   # Timeout in seconds
   timeout: 50
+  # Global JDBC Driver login timeout in seconds
+  jdbcLoginTimeout : 10
   
   # A list of WebHDFS services 
   webHdfsServices:
