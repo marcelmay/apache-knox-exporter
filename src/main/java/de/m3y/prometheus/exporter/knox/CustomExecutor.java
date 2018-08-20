@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Customized thread pool executor supporting timing tasks and cancelling blocking tasks.
- *
+ * <p>
  * See http://jcip.net/listings/TimingThreadPool.java and http://jcip.net/listings/SocketUsingTask.java
  */
 class CustomExecutor extends ThreadPoolExecutor {
@@ -16,7 +16,7 @@ class CustomExecutor extends ThreadPoolExecutor {
 
     /**
      * Timed future task.
-     *
+     * <p>
      * See http://jcip.net/listings/TimingThreadPool.java
      *
      * @param <T> The result type returned by {@code get}
@@ -64,6 +64,7 @@ class CustomExecutor extends ThreadPoolExecutor {
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
         super.beforeExecute(t, r);
+        t.setName(r.toString());
         startTime.set(System.nanoTime());
     }
 

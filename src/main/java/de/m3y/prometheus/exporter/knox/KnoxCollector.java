@@ -254,7 +254,7 @@ public class KnoxCollector extends Collector {
             labels = new String[]{action, knoxUrl, username, param};
             clientContext = ClientContext.with(username, password, knoxUrl);
             final ClientContext.SocketContext socketContext = clientContext.socket();
-            if(LOGGER.isDebugEnabled()) {
+            if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Setting timeout to {}s for {}", timeout, Arrays.toString(getLabels()));
             }
             socketContext.timeout(timeout);
@@ -271,6 +271,12 @@ public class KnoxCollector extends Collector {
                     } finally {
                         return super.cancel(mayInterruptIfRunning);
                     }
+                }
+
+                @Override
+                public String toString() {
+                    return AbstractKnoxBaseAction.this.getClass().getName() + "-"
+                            + Arrays.toString(AbstractKnoxBaseAction.this.getLabels());
                 }
             };
         }
@@ -343,8 +349,8 @@ public class KnoxCollector extends Collector {
     }
 
     static void initHiveDriver(int jdbcLoginTimeout) {
-        if(jdbcLoginTimeout>0) {
-            if(LOGGER.isDebugEnabled()) {
+        if (jdbcLoginTimeout > 0) {
+            if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Setting JDBC driver login timeout to {}s", jdbcLoginTimeout);
             }
             DriverManager.setLoginTimeout(jdbcLoginTimeout);
@@ -374,6 +380,12 @@ public class KnoxCollector extends Collector {
                     } finally {
                         return super.cancel(mayInterruptIfRunning);
                     }
+                }
+
+                @Override
+                public String toString() {
+                    return HiveQueryAction.this.getClass().getName() + "-"
+                            + Arrays.toString(HiveQueryAction.this.getLabels());
                 }
             };
         }
