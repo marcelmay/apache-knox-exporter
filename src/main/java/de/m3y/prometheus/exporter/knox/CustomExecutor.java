@@ -64,7 +64,11 @@ class CustomExecutor extends ThreadPoolExecutor {
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
         super.beforeExecute(t, r);
-        t.setName(r.toString());
+        final String name = r.toString();
+        t.setName(name);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Before execution of timed {}", name);
+        }
         startTime.set(System.nanoTime());
     }
 
@@ -76,11 +80,14 @@ class CustomExecutor extends ThreadPoolExecutor {
             if (r instanceof TimedFutureTask) {
                 ((TimedFutureTask) r).setDuration(taskTime);
             } else {
-                LOGGER.warn("Runnable not of expected type {} but of type {}",
-                        TimedFutureTask.class, r.getClass());
+                LOGGER.warn("Runnable not of expected type {} but of type {} for {}",
+                        TimedFutureTask.class, r.getClass(), r.toString());
             }
         } finally {
             super.afterExecute(r, t);
+        }
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("After execution of timed {}", r.toString());
         }
     }
 
