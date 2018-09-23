@@ -8,9 +8,9 @@ public class Config {
     private int timeout = DEFAULT_TIMEOUT;
     private String defaultUsername;
     private String defaultPassword;
-    private WebHdfsService[] webHdfsServices;
-    private HiveService[] hiveServices;
-    private HBaseService[] hbaseServices;
+    private WebHdfsService[] webHdfsServices = new WebHdfsService[]{};
+    private HiveService[] hiveServices = new HiveService[]{};
+    private HBaseService[] hbaseServices = new HBaseService[]{};
     private int jdbcLoginTimeout;
 
     public abstract static class KnoxService {
