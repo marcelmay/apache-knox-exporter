@@ -3,7 +3,7 @@ Prometheus Apache Knox Exporter
 
 [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.prometheus.exporter.knox/knox-exporter.svg?style=flat-square)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22de.m3y.prometheus.exporter.knox%22%20AND%20a%3A%22knox-exporter%22)
 
-A black box [Apache Knox](http://knox.apache.org) exporter for [Prometheus](https://prometheus.io/) supporting requests for
+A [Prometheus](https://prometheus.io/) black box probe for [Apache Knox](http://knox.apache.org) supporting requests for
 * WebHDFS status
 * Hive query
 * HBase status
@@ -11,6 +11,8 @@ A black box [Apache Knox](http://knox.apache.org) exporter for [Prometheus](http
 The exporter collects per request
 * the error count 
 * the duration as summary with 0.5/0.95/0.99 quantiles
+
+The exporter runs the requests towards the Knox proxied Hadoop services in parallel and enforces configurable timeouts.
 
 ![Overview](apache_knox_exporter_overview.png)
 
