@@ -1,7 +1,7 @@
 package de.m3y.prometheus.exporter.knox;
 
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 
 import org.yaml.snakeyaml.Yaml;
@@ -51,7 +51,7 @@ public interface ConfigLoader {
         }
 
         public synchronized Config getCurrentConfig() {
-            if(null==config) {
+            if (null == config) {
                 return getOrLoadIfModified(); // Load if not initialized yet
             }
             return config;
@@ -64,9 +64,9 @@ public interface ConfigLoader {
             }
 
             // Load
-            try (FileReader reader = new FileReader(filename)) {
+            try (FileInputStream is = new FileInputStream(filename)) {
                 lastModifiedTimestamp = filename.lastModified();
-                config = new Yaml().loadAs(reader, Config.class);
+                config = new Yaml().loadAs(is, Config.class);
                 return config;
             } catch (IOException e) {
                 throw new IllegalStateException("Can not load config from file " + filename, e);

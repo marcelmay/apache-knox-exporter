@@ -154,6 +154,10 @@ public class KnoxCollector extends Collector {
                     KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
                     KNOX_OPS_DURATION.labels(action.getLabels()).observe(durationSeconds);
                     METRIC_SCRAPE_ERROR.inc();
+
+                    if(e instanceof InterruptedException) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }
         } else {
