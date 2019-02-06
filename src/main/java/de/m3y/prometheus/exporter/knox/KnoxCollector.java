@@ -155,7 +155,7 @@ public class KnoxCollector extends Collector {
                     KNOX_OPS_DURATION.labels(action.getLabels()).observe(durationSeconds);
                     METRIC_SCRAPE_ERROR.inc();
 
-                    if(e instanceof InterruptedException) {
+                    if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
                     }
                 }
@@ -250,7 +250,7 @@ public class KnoxCollector extends Collector {
         protected final String knoxUrl;
         private final String[] labels;
         protected final ClientContext clientContext;
-        protected Hadoop hadoop;
+        protected KnoxSession knoxSession;
 
         AbstractKnoxBaseAction(String action, String knoxUrl, String username, String password, String param, int timeout) {
             super();
@@ -287,9 +287,9 @@ public class KnoxCollector extends Collector {
 
         @Override
         boolean perform() {
-            try (Hadoop tmpHadoop = new Hadoop(clientContext)) {
-                this.hadoop = tmpHadoop;
-                final AbstractRequest<? extends BasicResponse> request = createRequest(hadoop);
+            try (KnoxSession tmpHadoop = new KnoxSession(clientContext)) {
+                this.knoxSession = tmpHadoop; // Track for cancelling the action.
+                final AbstractRequest<? extends BasicResponse> request = createRequest(knoxSession);
                 try (BasicResponse basicResponse = request.now()) {
                     if (basicResponse.getStatusCode() == 200) {
                         return true;
@@ -302,22 +302,19 @@ public class KnoxCollector extends Collector {
                 }
             } catch (IOException | URISyntaxException | HadoopException e) {
                 LOGGER.warn("Failed to perform knox action {} : {}", Arrays.toString(labels), e.getMessage());
-            } finally {
-                this.hadoop = null;
             }
             return false;
         }
 
-        protected abstract AbstractRequest<? extends BasicResponse> createRequest(Hadoop hadoop);
+        protected abstract AbstractRequest<? extends BasicResponse> createRequest(KnoxSession knoxSession);
 
         @Override
         public void cancel() {
-            if (null != hadoop) {
+            if (null != knoxSession) {
                 try {
-                    hadoop.close();
-                    hadoop = null;
+                    knoxSession.close();
                 } catch (IOException e) {
-                    LOGGER.warn("Failed to close hadoop. Ignored for cancelling.", e);
+                    LOGGER.warn("Failed to close knox session. Ignored for cancelling.", e);
                 }
             }
         }
@@ -333,8 +330,8 @@ public class KnoxCollector extends Collector {
             super(ACTION_HBASE_STATUS, knoxUrl, username, password, "-", timeout);
         }
 
-        protected AbstractRequest<? extends BasicResponse> createRequest(Hadoop hadoop) {
-            return HBase.session(hadoop).status();
+        protected AbstractRequest<? extends BasicResponse> createRequest(KnoxSession knoxSession) {
+            return HBase.session(knoxSession).status();
         }
     }
 
@@ -347,8 +344,8 @@ public class KnoxCollector extends Collector {
         }
 
         @Override
-        protected AbstractRequest<? extends BasicResponse> createRequest(Hadoop hadoop) {
-            return Hdfs.status(hadoop).file(statusPath);
+        protected AbstractRequest<? extends BasicResponse> createRequest(KnoxSession knoxSession) {
+            return Hdfs.status(knoxSession).file(statusPath);
         }
     }
 
