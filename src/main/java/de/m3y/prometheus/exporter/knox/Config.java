@@ -48,7 +48,7 @@ public class Config {
 
     public static class HiveService extends KnoxService {
         private String jdbcUrl;
-        private String[] queries;
+        private String[] queries = new String[]{};
 
         public String getJdbcUrl() {
             return jdbcUrl;
@@ -78,7 +78,7 @@ public class Config {
 
     public static class WebHdfsService extends KnoxService {
         String knoxUrl;
-        String[] statusPaths;
+        String[] statusPaths = new String[]{};
 
         public String getKnoxUrl() {
             return knoxUrl;
