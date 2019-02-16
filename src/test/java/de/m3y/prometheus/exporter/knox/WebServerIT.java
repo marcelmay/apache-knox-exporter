@@ -2,11 +2,7 @@ package de.m3y.prometheus.exporter.knox;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
 
-import io.prometheus.client.Counter;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;

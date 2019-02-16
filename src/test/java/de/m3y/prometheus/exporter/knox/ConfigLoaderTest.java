@@ -13,7 +13,7 @@ public class ConfigLoaderTest {
         ConfigLoader loader = ConfigLoader.forFile(configFile);
         Config config = loader.getCurrentConfig();
         ConfigTest.validateConfig(config);
-        
+
         // Should not be reloaded
         assertThat(config == loader.getOrLoadIfModified()).isTrue();
 

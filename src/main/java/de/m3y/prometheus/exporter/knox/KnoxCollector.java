@@ -144,7 +144,7 @@ public class KnoxCollector extends Collector {
                     Boolean result = future.get();
                     KNOX_OPS_DURATION.labels(action.getLabels())
                             .observe(durationSeconds);
-                    if (!result.booleanValue()) {
+                    if (!result) {
                         // Not OK => ops error
                         KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
                     }
@@ -266,15 +266,16 @@ public class KnoxCollector extends Collector {
         }
 
         @Override
-        public RunnableFuture newTask() {
-            return new CustomExecutor.TimedFutureTask(this) {
+        public RunnableFuture<Boolean> newTask() {
+            return new CustomExecutor.TimedFutureTask<Boolean>(this) {
                 @Override
                 public boolean cancel(boolean mayInterruptIfRunning) {
                     try {
                         AbstractKnoxBaseAction.this.cancel();
-                    } finally {
-                        return super.cancel(mayInterruptIfRunning);
+                    } catch (Exception ex) {
+                        LOGGER.debug("Ignoring exception when cancelling", ex);
                     }
+                    return super.cancel(mayInterruptIfRunning);
                 }
 
                 @Override
@@ -372,15 +373,16 @@ public class KnoxCollector extends Collector {
         private Connection con;
 
         @Override
-        public RunnableFuture newTask() {
-            return new CustomExecutor.TimedFutureTask(this) {
+        public RunnableFuture<Boolean> newTask() {
+            return new CustomExecutor.TimedFutureTask<Boolean>(this) {
                 @Override
                 public boolean cancel(boolean mayInterruptIfRunning) {
                     try {
                         HiveQueryAction.this.cancel();
-                    } finally {
-                        return super.cancel(mayInterruptIfRunning);
+                    } catch (Exception ex) {
+                        LOGGER.debug("Ignoring exception when cancelling", ex);
                     }
+                    return super.cancel(mayInterruptIfRunning);
                 }
 
                 @Override

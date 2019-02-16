@@ -68,7 +68,7 @@ public class HomePageServlet extends HttpServlet {
         }
         buf.append("</ul></li></html>");
         resp.setContentType("text/html");
-        resp.getWriter().print(buf);
+        resp.getWriter().print(buf); // NOSONAR
     }
 
     private String getEmtpyStringIfNull(String value) {

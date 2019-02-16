@@ -81,20 +81,20 @@ class CustomExecutor extends ThreadPoolExecutor {
                 ((TimedFutureTask) r).setDuration(taskTime);
             } else {
                 LOGGER.warn("Runnable not of expected type {} but of type {} for {}",
-                        TimedFutureTask.class, r.getClass(), r.toString());
+                        TimedFutureTask.class, r.getClass(), r);
             }
         } finally {
             super.afterExecute(r, t);
         }
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("After execution of timed {}", r.toString());
+            LOGGER.debug("After execution of timed {}", r);
         }
     }
 
     @Override
     protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
         if (callable instanceof CancellableCallable) {
-            return ((CancellableCallable) callable).newTask();
+            return ((CancellableCallable<T>) callable).newTask();
         }
         return new TimedFutureTask<>(callable);
     }
