@@ -74,6 +74,16 @@ public class Config {
             hiveCheck.setQueries(query);
             return hiveCheck;
         }
+
+        /**
+         * Strips sensitive information such as trust store password.
+         *
+         * @param jdbcUrl the JDBC url.
+         * @return the escaped JDBC url.
+         */
+        public static String escapeJdbcUrl(String jdbcUrl) {
+            return jdbcUrl.replaceAll("trustStorePassword=.*?;", ""); // NOSONAR
+        }
     }
 
     public static class WebHdfsService extends KnoxService {

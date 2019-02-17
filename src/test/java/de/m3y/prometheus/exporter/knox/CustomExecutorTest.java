@@ -24,14 +24,11 @@ public class CustomExecutorTest {
     public void testDuration() throws InterruptedException {
         CustomExecutor executor = new CustomExecutor();
 
-        Collection<? extends Callable<Object>> actions = Collections.singletonList(new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                LOG.info("Sleeping ...");
-                Thread.sleep(100);
-                LOG.info("... awake again!");
-                return null;
-            }
+        Collection<? extends Callable<Object>> actions = Collections.singletonList(() -> {
+            LOG.info("Sleeping ...");
+            Thread.sleep(100);
+            LOG.info("... awake again!");
+            return null;
         });
         final List<Future<Object>> futures = executor.invokeAll(actions);
         assertThat(futures.size()).isEqualTo(1);
@@ -67,9 +64,10 @@ public class CustomExecutorTest {
                 public boolean cancel(boolean mayInterruptIfRunning) {
                     try {
                         BlockingTestCallable.this.cancel();
-                    } finally {
-                        return super.cancel(mayInterruptIfRunning);
+                    } catch (Exception ex) {
+                        LOG.error("Ignoring exception", ex);
                     }
+                    return super.cancel(mayInterruptIfRunning);
                 }
             };
         }

@@ -36,7 +36,8 @@ public class HomePageServlet extends HttpServlet {
                 + "</ul>"
                 + "<h2>Configuration</h2><ul>"
                 + "<li>default username : ").append(config.getDefaultUsername()).append("</li>"
-                + "<li>timeout : ").append(config.getTimeout()).append("s</li>"
+                + "<li>timeout : ").append(config.getTimeout()).append("ms</li>"
+                + "<li>JdbcLoginTimeout : ").append(config.getJdbcLoginTimeout()).append("s</li>"
                 + "<li>WebHDFS services"
                 + "<ul>");
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
@@ -60,7 +61,7 @@ public class HomePageServlet extends HttpServlet {
                 .append("<li>Hive services<ul>");
         for (Config.HiveService hiveService : config.getHiveServices()) {
             buf.append("<li><ul>")
-                    .append("<li>JDBC URL : ").append(hiveService.getJdbcUrl()).append("</li>")
+                    .append("<li>JDBC URL : ").append(Config.HiveService.escapeJdbcUrl(hiveService.getJdbcUrl())).append("</li>")
                     .append("<li>Username  (default override) : ")
                     .append(getEmtpyStringIfNull(hiveService.getUsername())).append("</li>")
                     .append("<li>Queries : ").append(Arrays.toString(hiveService.getQueries())).append("</li>")

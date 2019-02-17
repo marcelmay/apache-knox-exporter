@@ -228,6 +228,7 @@ public class KnoxCollector extends Collector {
             ERROR_TIMEOUT,
             ERROR_OTHER,
         }
+
         @Override
         public Boolean call() {
             return perform();
@@ -261,7 +262,7 @@ public class KnoxCollector extends Collector {
             if (Status.UNKNOWN.name().equals(labels[4])) {
                 labels[4] = status.name();
             } else {
-                LOGGER.warn("Ignoring update for status label " + labels[4] + " to " + status);
+                LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
             }
         }
 
@@ -309,9 +310,9 @@ public class KnoxCollector extends Collector {
                         setLabelStatus(Status.ERROR_OTHER);
                     }
                 }
-            } catch(KnoxShellException e) {
+            } catch (KnoxShellException e) {
                 // Trying to compensate error handling with heuristic
-                if(e.getMessage().contains("HTTP/1.1 401 Unauthorized" /* TODO: Pattern+1.x? */)) {
+                if (e.getMessage().contains("HTTP/1.1 401 Unauthorized" /* TODO: Pattern+1.x? */)) {
                     setLabelStatus(Status.ERROR_AUTH);
                 } else {
                     setLabelStatus(Status.ERROR_OTHER);
@@ -324,7 +325,7 @@ public class KnoxCollector extends Collector {
             return false;
         }
 
-        protected abstract AbstractRequest<? extends BasicResponse> createRequest(KnoxSession knoxSession);
+        protected abstract AbstractRequest<? extends BasicResponse> createRequest(KnoxSession knoxSession); //NOSONAR
 
         @Override
         public void cancel() {
@@ -418,7 +419,7 @@ public class KnoxCollector extends Collector {
             this.password = password;
             labels = new String[]{ACTION_HIVE_QUERY,
                     // Filter out security critical info
-                    jdbcUrl.replaceAll("trustStorePassword=.*?;", ""), // NOSONAR
+                    Config.HiveService.escapeJdbcUrl(jdbcUrl),
                     username, query, Status.UNKNOWN.name()};
         }
 
@@ -442,7 +443,7 @@ public class KnoxCollector extends Collector {
                 LOGGER.debug("Exception while doing JDBC query {}", query, e);
                 LOGGER.warn("Could not perform jdbc action : {}", e.getMessage());
                 // Trying to compensate error handling with heuristic
-                if(e.getMessage().contains("HTTP Response code: 401")) {
+                if (e.getMessage().contains("HTTP Response code: 401")) {
                     setLabelStatus(Status.ERROR_AUTH);
                 } else {
                     setLabelStatus(Status.ERROR_OTHER);
@@ -467,7 +468,7 @@ public class KnoxCollector extends Collector {
             if (Status.UNKNOWN.name().equals(labels[4])) {
                 labels[4] = status.name();
             } else {
-                LOGGER.warn("Ignoring update for status label " + labels[4] + " to " + status);
+                LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
             }
         }
 
