@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
  */
 class CustomExecutor extends ThreadPoolExecutor {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomExecutor.class);
-    private final ThreadLocal<Long> startTime = new ThreadLocal<>();
 
     /**
      * Timed future task.
@@ -22,7 +21,8 @@ class CustomExecutor extends ThreadPoolExecutor {
      * @param <T> The result type returned by {@code get}
      */
     static class TimedFutureTask<T> extends FutureTask<T> {
-        private long duration;
+        private long startTimeNs;
+        private long durationNs;
 
         public TimedFutureTask(Callable<T> callable) {
             super(callable);
@@ -31,12 +31,28 @@ class CustomExecutor extends ThreadPoolExecutor {
         /**
          * @return duration in nanoseconds.
          */
-        public long getDuration() {
-            return duration;
+        public long getDurationNs() {
+            return durationNs;
         }
 
-        public void setDuration(long duration) {
-            this.duration = duration;
+        /**
+         * Initializes the start time.
+         */
+        public void startTimer() {
+            this.startTimeNs = System.nanoTime();
+        }
+
+        /**
+         * Initializes the end time.
+         */
+        public void stopTimer() {
+            durationNs = System.nanoTime() - startTimeNs;
+        }
+
+        @Override
+        public boolean cancel(boolean mayInterruptIfRunning) {
+            stopTimer();
+            return super.cancel(mayInterruptIfRunning);
         }
     }
 
@@ -69,16 +85,16 @@ class CustomExecutor extends ThreadPoolExecutor {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Before execution of timed {}", name);
         }
-        startTime.set(System.nanoTime());
+        if (r instanceof TimedFutureTask) {
+            ((TimedFutureTask) r).startTimer();
+        }
     }
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
         try {
-            long endTime = System.nanoTime();
-            long taskTime = endTime - startTime.get();
             if (r instanceof TimedFutureTask) {
-                ((TimedFutureTask) r).setDuration(taskTime);
+                ((TimedFutureTask) r).stopTimer();
             } else {
                 LOGGER.warn("Runnable not of expected type {} but of type {} for {}",
                         TimedFutureTask.class, r.getClass(), r);

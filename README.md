@@ -49,8 +49,8 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   # Default password for authenticating Knox user.
   # Protect this config file read access with file permissions!
   defaultPassword : '***'
-  # Timeout in seconds
-  timeout: 50
+  # Timeout in milliseconds
+  timeout: 50000
   # Global JDBC Driver login timeout in seconds
   jdbcLoginTimeout : 10
   

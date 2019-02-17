@@ -38,7 +38,7 @@ public class CustomExecutorTest {
         final Future<Object> future = futures.get(0);
         assertThat(future).isInstanceOf(CustomExecutor.TimedFutureTask.class);
         CustomExecutor.TimedFutureTask timedFutureTask = (CustomExecutor.TimedFutureTask) future;
-        assertThat(timedFutureTask.getDuration() / 1000.0 / 1000.0).isGreaterThan(100).isLessThan(110 /*20% tolerance*/);
+        assertThat(timedFutureTask.getDurationNs() / 1000.0 / 1000.0).isGreaterThan(100).isLessThan(110 /*20% tolerance*/);
 
         executor.shutdownNow();
     }
@@ -93,7 +93,7 @@ public class CustomExecutorTest {
         assertThat(future).isInstanceOf(CustomExecutor.TimedFutureTask.class);
         CustomExecutor.TimedFutureTask timedFutureTask = (CustomExecutor.TimedFutureTask) future;
         assertThat(timedFutureTask.isCancelled()).isTrue();
-        assertThat(timedFutureTask.getDuration() / 1000.0 / 1000.0).isGreaterThan(100).isLessThan(120 /* 20% tolerance */);
+        assertThat(timedFutureTask.getDurationNs() / 1000.0 / 1000.0).isGreaterThan(100).isLessThan(120 /* 20% tolerance */);
 
         executor.shutdownNow();
     }

@@ -113,7 +113,7 @@ public class KnoxCollector extends Collector {
 
         try {
             final int timeout = config.getTimeout();
-            List<Future<Boolean>> futures = executorService.invokeAll(actions, timeout, TimeUnit.SECONDS);
+            List<Future<Boolean>> futures = executorService.invokeAll(actions, timeout, TimeUnit.MILLISECONDS);
             updateMetrics(futures, actions);
         } catch (InterruptedException ex) {
             METRIC_SCRAPE_ERROR.inc();
@@ -133,7 +133,7 @@ public class KnoxCollector extends Collector {
     private void updateMetrics(Future<Boolean> future, AbstractBaseAction action) {
         if (future instanceof CustomExecutor.TimedFutureTask) {
             // convert ns to seconds
-            double durationSeconds = ((CustomExecutor.TimedFutureTask) future).getDuration() / 1000.0 / 1000.0 / 1000.0;
+            double durationSeconds = ((CustomExecutor.TimedFutureTask) future).getDurationNs() / 1000.0 / 1000.0 / 1000.0;
 
             if (future.isCancelled()) {
                 // Timed out => ops error
@@ -222,8 +222,8 @@ public class KnoxCollector extends Collector {
 
     abstract static class AbstractBaseAction implements CustomExecutor.CancellableCallable<Boolean> {
         enum Status {
-            UKNOWN,
-            SUCCCESS,
+            UNKNOWN,
+            SUCCESS,
             ERROR_AUTH,
             ERROR_TIMEOUT,
             ERROR_OTHER,
@@ -247,18 +247,18 @@ public class KnoxCollector extends Collector {
         AbstractKnoxBaseAction(String action, String knoxUrl, String username, String password, String param, int timeout) {
             super();
             this.knoxUrl = knoxUrl;
-            labels = new String[]{action, knoxUrl, username, param, Status.UKNOWN.name()};
+            labels = new String[]{action, knoxUrl, username, param, Status.UNKNOWN.name()};
             clientContext = ClientContext.with(username, password, knoxUrl);
             final ClientContext.SocketContext socketContext = clientContext.socket();
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Setting timeout to {}s for {}", timeout, Arrays.toString(getLabels()));
+                LOGGER.debug("Setting timeout to {}ms for {}", timeout, Arrays.toString(getLabels()));
             }
             socketContext.timeout(timeout);
             socketContext.reuseAddress(true);
         }
 
         protected void setLabelStatus(Status status) {
-            if (Status.UKNOWN.name().equals(labels[4])) {
+            if (Status.UNKNOWN.name().equals(labels[4])) {
                 labels[4] = status.name();
             } else {
                 LOGGER.warn("Ignoring update for status label " + labels[4] + " to " + status);
@@ -293,9 +293,11 @@ public class KnoxCollector extends Collector {
                 final AbstractRequest<? extends BasicResponse> request = createRequest(knoxSession);
                 try (BasicResponse basicResponse = request.now()) {
                     if (basicResponse.getStatusCode() == 200) {
-                        setLabelStatus(Status.SUCCCESS);
+                        setLabelStatus(Status.SUCCESS);
                         return true;
-                    } else if (LOGGER.isDebugEnabled()) {
+                    }
+
+                    if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("Failed knox action using knox url {}. " +
                                         " Response status code is {}, body is {}",
                                 knoxUrl,
@@ -417,7 +419,7 @@ public class KnoxCollector extends Collector {
             labels = new String[]{ACTION_HIVE_QUERY,
                     // Filter out security critical info
                     jdbcUrl.replaceAll("trustStorePassword=.*?;", ""), // NOSONAR
-                    username, query, Status.UKNOWN.name()};
+                    username, query, Status.UNKNOWN.name()};
         }
 
         @Override
@@ -427,7 +429,7 @@ public class KnoxCollector extends Collector {
                 try (Statement stmt = con.createStatement()) {
                     try (ResultSet resultSet = stmt.executeQuery(query)) {
                         if (resultSet.next()) {
-                            setLabelStatus(Status.SUCCCESS);
+                            setLabelStatus(Status.SUCCESS);
                             return true;
                         } else if (LOGGER.isDebugEnabled()) {
                             LOGGER.debug("No Hive ResultSet.next() to {} using query {} and user {}",
@@ -462,7 +464,7 @@ public class KnoxCollector extends Collector {
         }
 
         protected void setLabelStatus(Status status) {
-            if (Status.UKNOWN.name().equals(labels[4])) {
+            if (Status.UNKNOWN.name().equals(labels[4])) {
                 labels[4] = status.name();
             } else {
                 LOGGER.warn("Ignoring update for status label " + labels[4] + " to " + status);
