@@ -307,7 +307,15 @@ public class KnoxCollector extends Collector {
                         setLabelStatus(Status.ERROR_OTHER);
                     }
                 }
-            } catch (IOException | URISyntaxException | HadoopException e) {
+            } catch(KnoxShellException e) {
+                // Trying to compensate error handling with heuristic
+                if(e.getMessage().contains("HTTP/1.1 401 Unauthorized" /* TODO: Pattern+1.x? */)) {
+                    setLabelStatus(Status.ERROR_AUTH);
+                } else {
+                    setLabelStatus(Status.ERROR_OTHER);
+                }
+                LOGGER.warn("Failed to perform knox action {} : {}", Arrays.toString(labels), e.getMessage());
+            } catch (IOException | URISyntaxException e) {
                 setLabelStatus(Status.ERROR_OTHER);
                 LOGGER.warn("Failed to perform knox action {} : {}", Arrays.toString(labels), e.getMessage());
             }
@@ -431,7 +439,12 @@ public class KnoxCollector extends Collector {
             } catch (SQLException | NoClassDefFoundError e) {
                 LOGGER.debug("Exception while doing JDBC query {}", query, e);
                 LOGGER.warn("Could not perform jdbc action : {}", e.getMessage());
-                setLabelStatus(Status.ERROR_OTHER);
+                // Trying to compensate error handling with heuristic
+                if(e.getMessage().contains("HTTP Response code: 401")) {
+                    setLabelStatus(Status.ERROR_AUTH);
+                } else {
+                    setLabelStatus(Status.ERROR_OTHER);
+                }
             }
             return false;
         }
