@@ -63,12 +63,14 @@ class CustomExecutor extends ThreadPoolExecutor {
      */
     interface CancellableCallable<T> extends Callable<T> {
         /**
-         * Cancel ongoing operation, eg by closing a socket.
+         * Cancels ongoing operation, eg by closing a socket.
          */
         void cancel();
 
         /**
-         * @return
+         * Create a new instance.
+         *
+         * @return a new instance
          */
         RunnableFuture<T> newTask();
     }

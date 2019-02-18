@@ -185,6 +185,8 @@ public class KnoxCollector extends Collector {
                         handleDefaultValue(webHdfsService.getPassword(), config.getDefaultPassword()),
                         config.getTimeout());
                 newActions.add(webHdfsStatusAction);
+                // https://www.robustperception.io/existential-issues-with-metrics
+                KNOX_OPS_ERRORS.labels(webHdfsStatusAction.getLabels());
             }
         }
 
@@ -198,6 +200,8 @@ public class KnoxCollector extends Collector {
                             handleDefaultValue(hiveService.getUsername(), config.getDefaultUsername()),
                             handleDefaultValue(hiveService.getPassword(), config.getDefaultPassword()));
                     newActions.add(hiveQueryAction);
+                    // https://www.robustperception.io/existential-issues-with-metrics
+                    KNOX_OPS_ERRORS.labels(hiveQueryAction.getLabels());
                 }
             }
         }
@@ -208,6 +212,8 @@ public class KnoxCollector extends Collector {
                     handleDefaultValue(hBaseService.getPassword(), config.getDefaultPassword()),
                     config.getTimeout());
             newActions.add(hbaseStatusAction);
+            // https://www.robustperception.io/existential-issues-with-metrics
+            KNOX_OPS_ERRORS.labels(hbaseStatusAction.getLabels());
         }
 
         return newActions;
