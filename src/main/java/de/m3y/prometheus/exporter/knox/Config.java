@@ -82,7 +82,7 @@ public class Config {
          * @return the escaped JDBC url.
          */
         public static String escapeJdbcUrl(String jdbcUrl) {
-            return jdbcUrl.replaceAll("trustStorePassword=.*?;", ""); // NOSONAR
+            return jdbcUrl.replaceAll("trustStorePassword=.*?;", "trustStorePassword=***;"); // NOSONAR
         }
     }
 

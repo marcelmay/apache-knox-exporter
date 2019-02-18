@@ -51,4 +51,14 @@ public class ConfigTest {
         assertThat(hBaseServices.length).isEqualTo(1);
         assertThat(hBaseServices[0].getKnoxUrl()).isEqualTo("https://localhost:8443/gateway/default");
     }
+
+    @Test
+    public void testEscacpeJdbcUrl() {
+        assertThat(Config.HiveService.escapeJdbcUrl("jdbc:hive2://sandbox-hdp.hortonworks.com:8443/;" +
+                "ssl=true;sslTrustStore=sandbox-hdp.hortonworks.com.p12;" +
+                "trustStorePassword=changeit;transportMode=http;httpPath=gateway/default/hive")
+        ).isEqualTo("jdbc:hive2://sandbox-hdp.hortonworks.com:8443/;" +
+                "ssl=true;sslTrustStore=sandbox-hdp.hortonworks.com.p12;" +
+                "trustStorePassword=***;transportMode=http;httpPath=gateway/default/hive");
+    }
 }
