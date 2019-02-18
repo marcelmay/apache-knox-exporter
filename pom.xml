@@ -49,7 +49,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.build.timestamp.format>yyyy-MM-dd/HH:mm</maven.build.timestamp.format>
         <exporter.build.timestamp>${maven.build.timestamp}</exporter.build.timestamp>
-        <scmBranch>-will-be-replace-if-available-</scmBranch>
     </properties>
 
     <prerequisites> <!-- For version:display-plugin-updates -->
