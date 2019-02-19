@@ -247,7 +247,7 @@ public class KnoxCollector extends Collector {
 
     abstract class AbstractKnoxBaseAction extends AbstractBaseAction {
         protected final String knoxUrl;
-        private final String[] labels;
+        private String[] labels;
         protected final ClientContext clientContext;
         protected KnoxSession knoxSession;
 
@@ -266,6 +266,7 @@ public class KnoxCollector extends Collector {
 
         protected void setLabelStatus(Status status) {
             if (Status.UNKNOWN.name().equals(labels[4])) {
+                labels = labels.clone();
                 labels[4] = status.name();
             } else {
                 LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
@@ -394,7 +395,7 @@ public class KnoxCollector extends Collector {
         private final String query;
         private final String username;
         private final String password;
-        private final String[] labels;
+        private String[] labels;
         private Connection con;
 
         @Override
@@ -472,6 +473,7 @@ public class KnoxCollector extends Collector {
 
         protected void setLabelStatus(Status status) {
             if (Status.UNKNOWN.name().equals(labels[4])) {
+                labels = labels.clone();
                 labels[4] = status.name();
             } else {
                 LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
