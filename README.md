@@ -112,9 +112,7 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
 
 | Name | Type | Description | Example |
 |------|------|-------------|---------|
-| knox_exporter_ops_duration | Summary | Duration of a request to Hive or WebHDFS, including percentiles | knox_exporter_ops_duration_seconds{action="webhdfs_status",uri="https://my-knox-server/gateway/another-cluster",user="foo",param="/",status="ERROR_OTHER",quantile="0.5",} 0.004898905  |
-|      |      |             | knox_exporter_ops_duration_seconds_count... |
-|      |      |             | knox_exporter_ops_duration_seconds_sum... |
+| knox_exporter_ops_duration | Summary | Duration of a request to Hive or WebHDFS, including percentiles | knox_exporter_ops_duration_seconds{action="webhdfs_status",uri="https://my-knox-server/gateway/another-cluster",user="foo",param="/",status="ERROR_OTHER",quantile="0.5",} 0.004898905 <br> knox_exporter_ops_duration_seconds_count... <br> knox_exporter_ops_duration_seconds_sum... | 
 | knox_exporter_ops_errors_total | Counter | Errors of a request to Hive or WebHDFS | knox_exporter_ops_errors_total{action="webhdfs_status",uri="https://my-knox-server/gateway/default",user="foo",param="/",status="SUCCESS",} 2.0
 |
 | knox_exporter_scrape_duration_seconds | Gauge | Total duration of a scrape request (includes all hive and WebHDFS requests) | knox_exporter_scrape_duration_seconds 0.005654917 |
