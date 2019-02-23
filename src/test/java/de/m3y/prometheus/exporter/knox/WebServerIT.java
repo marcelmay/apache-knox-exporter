@@ -91,7 +91,7 @@ public class WebServerIT {
         // knox_exporter_ops_errors_total
         assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hive_query\",uri=\"jdbc:hive2://localhost:10000/default\",user=\"foo\",param=\"SELECT current_database()\",status=\"ERROR_OTHER\",}");
         assertThat(body).contains("knox_exporter_ops_errors_total{action=\"webhdfs_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"/\",status=\"ERROR_OTHER\",}");
-        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",status=\"ERROR_OTHER\",} 1.0");
+        assertThat(body).contains("knox_exporter_ops_errors_total{action=\"hbase_status\",uri=\"https://localhost:8443/gateway/default\",user=\"foo\",param=\"-\",status=\"ERROR_OTHER\",}");
     }
 
     @Test

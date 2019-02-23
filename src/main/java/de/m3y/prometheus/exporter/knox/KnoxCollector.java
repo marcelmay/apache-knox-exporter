@@ -5,7 +5,6 @@ import java.net.URISyntaxException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.*;
 
@@ -28,37 +27,45 @@ public class KnoxCollector extends Collector {
 
     static final String METRIC_PREFIX = "knox_exporter_";
 
-    private static final Counter METRIC_SCRAPE_REQUESTS = Counter.build()
+    private final Counter metricScapeRequests = Counter.build()
             .name(METRIC_PREFIX + "scrape_requests_total")
-            .help("Exporter requests made").register();
-    private static final Counter METRIC_SCRAPE_ERROR = Counter.build()
+            .help("Exporter requests made")
+            .create();
+    private final Counter metricScrapeErrors = Counter.build()
             .name(METRIC_PREFIX + "scrape_errors_total")
-            .help("Counts failed scrapes.").register();
+            .help("Counts failed scrapes.")
+            .create();
 
-    private static final Gauge METRIC_SCRAPE_DURATION = Gauge.build()
+    private final Gauge metricScrapeDuration = Gauge.build()
             .name(METRIC_PREFIX + "scrape_duration_seconds")
-            .help("Scrape duration").register();
+            .help("Scrape duration")
+            .create();
+    private final Counter metricConfigReloads = Counter.build()
+            .name(METRIC_PREFIX + "config_reloads_total")
+            .help("Number of configuration reloads")
+            .create();
 
-    private static final Counter KNOX_OPS_ERRORS = Counter.build()
+    private final Counter metricKnoxOpsErrors = Counter.build()
             .name(METRIC_PREFIX + "ops_errors_total")
             .help("Ops error counts.")
             .labelNames("action", "uri", "user", "param", "status")
-            .register();
+            .create();
 
-    private static final Summary KNOX_OPS_DURATION = Summary.build()
+    private final Summary metricKnoxOpsDuration = Summary.build()
             .name(METRIC_PREFIX + "ops_duration_seconds")
             .help("Duration of successful and failed operations")
             .labelNames("action", "uri", "user", "param", "status")
             .quantile(0.5, 0.05)
             .quantile(0.95, 0.01)
             .quantile(0.99, 0.001)
-            .register();
+            .create();
     private static final String ACTION_HIVE_QUERY = "hive_query";
     private static final String ACTION_WEBHDFS_STATUS = "webhdfs_status";
     private static final String ACTION_HBASE_STATUS = "hbase_status";
 
     private final ConfigLoader configLoader;
     private final ThreadPoolExecutor executorService;
+    private final List<AbstractBaseAction> actions = new ArrayList<>();
 
     KnoxCollector(ConfigLoader configLoader) {
         this.configLoader = configLoader;
@@ -66,19 +73,31 @@ public class KnoxCollector extends Collector {
         // Initialize with a default size. Will be later reconfigured depending on
         // exporter configuration.
         executorService = new CustomExecutor();
+
+        metricConfigReloads.labels(); // Init
+
+        // Initially load config
+        configureActions(configLoader.getCurrentConfig());
     }
 
     public synchronized List<MetricFamilySamples> collect() {
-        try (Gauge.Timer timer = METRIC_SCRAPE_DURATION.startTimer()) {
-            METRIC_SCRAPE_REQUESTS.inc();
+        try (Gauge.Timer timer = metricScrapeDuration.startTimer()) {
+            metricScapeRequests.inc();
 
-            scrapeKnox(reloadConfigIfRequired());
+            scrapeKnox();
         } catch (Exception e) {
-            METRIC_SCRAPE_ERROR.inc();
+            metricScrapeErrors.inc();
             LOGGER.error("Scrape failed", e);
         }
 
-        return Collections.emptyList(); // Directly registered counters
+        List<MetricFamilySamples> metricFamilySamplesList = new ArrayList<>();
+        metricFamilySamplesList.addAll(metricScapeRequests.collect());
+        metricFamilySamplesList.addAll(metricScrapeErrors.collect());
+        metricFamilySamplesList.addAll(metricScrapeDuration.collect());
+        metricFamilySamplesList.addAll(metricConfigReloads.collect());
+        metricFamilySamplesList.addAll(metricKnoxOpsErrors.collect());
+        metricFamilySamplesList.addAll(metricKnoxOpsDuration.collect());
+        return metricFamilySamplesList; // Directly registered counters
     }
 
     synchronized void shutdown() {
@@ -102,8 +121,8 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private void scrapeKnox(Config config) {
-        final List<AbstractBaseAction> actions = configureActions(config);
+    private void scrapeKnox() {
+        Config config = updateConfigureAndActions();
 
         // Resize pool?
         if (actions.size() != executorService.getMaximumPoolSize()) {
@@ -116,10 +135,26 @@ public class KnoxCollector extends Collector {
             List<Future<Boolean>> futures = executorService.invokeAll(actions, timeout, TimeUnit.MILLISECONDS);
             updateMetrics(futures, actions);
         } catch (InterruptedException ex) {
-            METRIC_SCRAPE_ERROR.inc();
+            metricScrapeErrors.inc();
             LOGGER.error("Failed to invoke actions", ex);
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Must be synchronized, as the actions list is modified.
+     *
+     * @return the current config
+     */
+    private synchronized Config updateConfigureAndActions() {
+        final boolean modifiedConfig = configLoader.hasModifications();
+        Config config = configLoader.getOrLoadIfModified();
+        if (modifiedConfig) {
+            configureActions(config);
+            metricConfigReloads.inc();
+            LOGGER.info("Reloaded and reconfigured.");
+        }
+        return config;
     }
 
     private void updateMetrics(List<Future<Boolean>> futures, List<AbstractBaseAction> actions) {
@@ -137,24 +172,24 @@ public class KnoxCollector extends Collector {
 
             if (future.isCancelled()) {
                 // Timed out => ops error
-                KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
-                KNOX_OPS_DURATION.labels(action.getLabels())
+                metricKnoxOpsErrors.labels(action.getLabels()).inc();
+                metricKnoxOpsDuration.labels(action.getLabels())
                         .observe(durationSeconds);
             } else {
                 try {
                     Boolean result = future.get();
-                    KNOX_OPS_DURATION.labels(action.getLabels())
+                    metricKnoxOpsDuration.labels(action.getLabels())
                             .observe(durationSeconds);
                     if (!result) {
                         // Not OK => ops error
-                        KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
+                        metricKnoxOpsErrors.labels(action.getLabels()).inc();
                     }
                 } catch (ExecutionException | InterruptedException | CancellationException e) {
                     // Should not happen ...
                     LOGGER.error("Can not get result for action " + action, e);
-                    KNOX_OPS_ERRORS.labels(action.getLabels()).inc();
-                    KNOX_OPS_DURATION.labels(action.getLabels()).observe(durationSeconds);
-                    METRIC_SCRAPE_ERROR.inc();
+                    metricKnoxOpsErrors.labels(action.getLabels()).inc();
+                    metricKnoxOpsDuration.labels(action.getLabels()).observe(durationSeconds);
+                    metricScrapeErrors.inc();
 
                     if (e instanceof InterruptedException) {
                         Thread.currentThread().interrupt();
@@ -166,16 +201,8 @@ public class KnoxCollector extends Collector {
         }
     }
 
-    private Config reloadConfigIfRequired() {
-        if (configLoader.hasModifications()) {
-            configLoader.getOrLoadIfModified();
-            LOGGER.info("Reloaded and reconfigured.");
-        }
-        return configLoader.getCurrentConfig();
-    }
-
-    private List<AbstractBaseAction> configureActions(Config config) {
-        List<AbstractBaseAction> newActions = new ArrayList<>();
+    private void configureActions(Config config) {
+        actions.clear();
 
         for (Config.WebHdfsService webHdfsService : config.getWebHdfsServices()) {
             for (String statusPath : webHdfsService.getStatusPaths()) {
@@ -184,9 +211,9 @@ public class KnoxCollector extends Collector {
                         handleDefaultValue(webHdfsService.getUsername(), config.getDefaultUsername()),
                         handleDefaultValue(webHdfsService.getPassword(), config.getDefaultPassword()),
                         config.getTimeout());
-                newActions.add(webHdfsStatusAction);
+                actions.add(webHdfsStatusAction);
                 // https://www.robustperception.io/existential-issues-with-metrics
-                KNOX_OPS_ERRORS.labels(webHdfsStatusAction.getLabels());
+                metricKnoxOpsErrors.labels(webHdfsStatusAction.getLabels());
             }
         }
 
@@ -199,9 +226,9 @@ public class KnoxCollector extends Collector {
                             query,
                             handleDefaultValue(hiveService.getUsername(), config.getDefaultUsername()),
                             handleDefaultValue(hiveService.getPassword(), config.getDefaultPassword()));
-                    newActions.add(hiveQueryAction);
+                    actions.add(hiveQueryAction);
                     // https://www.robustperception.io/existential-issues-with-metrics
-                    KNOX_OPS_ERRORS.labels(hiveQueryAction.getLabels());
+                    metricKnoxOpsErrors.labels(hiveQueryAction.getLabels());
                 }
             }
         }
@@ -211,12 +238,10 @@ public class KnoxCollector extends Collector {
                     handleDefaultValue(hBaseService.getUsername(), config.getDefaultUsername()),
                     handleDefaultValue(hBaseService.getPassword(), config.getDefaultPassword()),
                     config.getTimeout());
-            newActions.add(hbaseStatusAction);
+            actions.add(hbaseStatusAction);
             // https://www.robustperception.io/existential-issues-with-metrics
-            KNOX_OPS_ERRORS.labels(hbaseStatusAction.getLabels());
+            metricKnoxOpsErrors.labels(hbaseStatusAction.getLabels());
         }
-
-        return newActions;
     }
 
     private String handleDefaultValue(String value, String defaultValue) {
@@ -235,6 +260,8 @@ public class KnoxCollector extends Collector {
             ERROR_OTHER,
         }
 
+        protected String[] labels;
+
         @Override
         public Boolean call() {
             return perform();
@@ -242,12 +269,22 @@ public class KnoxCollector extends Collector {
 
         abstract boolean perform();
 
-        abstract String[] getLabels();
+        String[] getLabels() {
+            return labels;
+        }
+
+        protected void setLabelStatus(Status status) {
+            if (Status.UNKNOWN.name().equals(labels[4])) {
+                labels = labels.clone();
+                labels[4] = status.name();
+            } else {
+                LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
+            }
+        }
     }
 
     abstract class AbstractKnoxBaseAction extends AbstractBaseAction {
         protected final String knoxUrl;
-        private String[] labels;
         protected final ClientContext clientContext;
         protected KnoxSession knoxSession;
 
@@ -262,15 +299,6 @@ public class KnoxCollector extends Collector {
             }
             socketContext.timeout(timeout);
             socketContext.reuseAddress(true);
-        }
-
-        protected void setLabelStatus(Status status) {
-            if (Status.UNKNOWN.name().equals(labels[4])) {
-                labels = labels.clone();
-                labels[4] = status.name();
-            } else {
-                LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
-            }
         }
 
         @Override
@@ -345,11 +373,6 @@ public class KnoxCollector extends Collector {
                 }
             }
         }
-
-        @Override
-        String[] getLabels() {
-            return labels;
-        }
     }
 
     class HbaseStatusAction extends AbstractKnoxBaseAction {
@@ -395,7 +418,6 @@ public class KnoxCollector extends Collector {
         private final String query;
         private final String username;
         private final String password;
-        private String[] labels;
         private Connection con;
 
         @Override
@@ -471,19 +493,6 @@ public class KnoxCollector extends Collector {
             }
         }
 
-        protected void setLabelStatus(Status status) {
-            if (Status.UNKNOWN.name().equals(labels[4])) {
-                labels = labels.clone();
-                labels[4] = status.name();
-            } else {
-                LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
-            }
-        }
-
-        @Override
-        String[] getLabels() {
-            return labels;
-        }
     }
 
 }
