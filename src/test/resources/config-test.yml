@@ -2,8 +2,8 @@
 defaultUsername: 'foo'
 # Default password for user
 defaultPassword: '***'
-# Timeout in seconds
-timeout: 59
+# Timeout in milliseconds
+timeout: 59000
 
 # Global JDBC Driver login timeout in seconds
 jdbcLoginTimeout : 10

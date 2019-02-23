@@ -2,8 +2,10 @@
 defaultUsername: 'foo'
 # Password for authenticating user
 defaultPassword: '***'
-# Timeout in seconds
-timeout: 55
+# Timeout in milliseconds
+timeout: 10000
+# Global JDBC Driver login timeout in seconds
+jdbcLoginTimeout : 10
 
 webHdfsServices:
 - knoxUrl: 'https://localhost:8443/gateway/default'

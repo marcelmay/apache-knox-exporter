@@ -26,7 +26,7 @@ public class ConfigTest {
 
         assertThat(config.getDefaultPassword()).isEqualTo("***");
         assertThat(config.getDefaultUsername()).isEqualTo("foo");
-        assertThat(config.getTimeout()).isEqualTo(59);
+        assertThat(config.getTimeout()).isEqualTo(59000);
         assertThat(config.getJdbcLoginTimeout()).isEqualTo(10);
 
         Config.HiveService[] hiveServices = config.getHiveServices();
