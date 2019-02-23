@@ -112,12 +112,12 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
 
 | Name | Type | Description | Example |
 |------|------|-------------|---------|
-| knox_exporter_ops_duration | Summary | Duration of a request to Hive or WebHDFS, including percentiles | knox_exporter_ops_duration_seconds{action="webhdfs_status",uri="https://my-knox-server/gateway/another-cluster",user="foo",param="/",status="ERROR_OTHER",quantile="0.5",} 0.004898905 <br> knox_exporter_ops_duration_seconds_count... <br> knox_exporter_ops_duration_seconds_sum... | 
-| knox_exporter_ops_errors_total | Counter | Errors of a request to Hive or WebHDFS | knox_exporter_ops_errors_total{action="webhdfs_status",uri="https://my-knox-server/gateway/default",user="foo",param="/",status="SUCCESS",} 2.0 |
-| knox_exporter_config_reloads_total | Counter | Total number of configuration reloads | knox_exporter_config_reloads_total 2.0 |
-| knox_exporter_scrape_duration_seconds | Gauge | Total duration of a scrape request (includes all hive and WebHDFS requests) | knox_exporter_scrape_duration_seconds 0.005654917 |
-| knox_exporter_scrape_requests_total | Counter | Total number of scrape requests to this exporter | knox_exporter_scrape_requests_total 2.0 |
-| knox_exporter_app_info | Gauge | Exporter info such as version, build time etc | knox_exporter_app_info{appName="knox_exporter",appVersion="1.0-SNAPSHOT",buildTime="2019-02-18/20:59",buildScmVersion="032d6b298455868938aace831d72982a972e86c5",buildScmBranch="status-label",} 1.0 |
+| knox_exporter_ops_duration | Summary | Duration of a request to Hive or WebHDFS, including percentiles | `knox_exporter_ops_duration_seconds{action="webhdfs_status",uri="https://my-knox-server/gateway/another-cluster",user="foo",param="/",status="ERROR_OTHER",quantile="0.5",} 0.004898905` <br> `knox_exporter_ops_duration_seconds_count... `<br> `knox_exporter_ops_duration_seconds_sum...` |
+| knox_exporter_ops_errors_total | Counter | Errors of a request to Hive or WebHDFS | `knox_exporter_ops_errors_total{action="webhdfs_status",uri="https://my-knox-server/gateway/default",user="foo",param="/",status="SUCCESS",} 2.0` |
+| knox_exporter_config_reloads_total | Counter | Total number of configuration reloads | `knox_exporter_config_reloads_total 2.0` |
+| knox_exporter_scrape_duration_seconds | Gauge | Total duration of a scrape request (includes all hive and WebHDFS requests) | `knox_exporter_scrape_duration_seconds 0.005654917` |
+| knox_exporter_scrape_requests_total | Counter | Total number of scrape requests to this exporter | `knox_exporter_scrape_requests_total 2.0` |
+| knox_exporter_app_info | Gauge | Exporter info such as version, build time etc | `knox_exporter_app_info{appName="knox_exporter",appVersion="1.0-SNAPSHOT",buildTime="2019-02-18/20:59",buildScmVersion="032d6b298455868938aace831d72982a972e86c5",buildScmBranch="status-label",} 1.0` |
 
 | Label | Description |
 |-------|-------------|
