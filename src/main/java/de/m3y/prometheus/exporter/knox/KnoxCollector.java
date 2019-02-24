@@ -274,12 +274,8 @@ public class KnoxCollector extends Collector {
         }
 
         protected void setLabelStatus(Status status) {
-            if (Status.UNKNOWN.name().equals(labels[4])) {
-                labels = labels.clone();
-                labels[4] = status.name();
-            } else {
-                LOGGER.warn("Ignoring update for status label {} to {}", labels[4], status);
-            }
+            labels = labels.clone();
+            labels[4] = status.name();
         }
     }
 
