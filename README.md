@@ -91,7 +91,7 @@ Available on [![Maven Central](https://img.shields.io/maven-central/v/de.m3y.pro
   Example including JVM opts:
   ```
   > java -Xmx256m -server \
-         -jar knox-exporter-1.0-SNAPSHOT.jar \
+         -jar knox-exporter-<VERSION>.jar \
          0.0.0.0 9092 example.yml
   ```
   

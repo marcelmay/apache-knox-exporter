@@ -7,9 +7,9 @@
     <artifactId>knox-exporter</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>Prometheus exporter for Apache Knox</name>
+    <name>Prometheus blackbox exporter for Apache Knox</name>
 
-    <description>The Prometheus exporter for Apache Knox allows collecting statistics by performing WebHdfs ops.
+    <description>The Prometheus blackbox exporter samples Apache Knox WebHdfs/HBase/Hive endpoints collecting error and duration metrics.
     </description>
     <url>https://github.com/marcelmay/apacke-knox-exporter.git</url>
 
