@@ -264,6 +264,7 @@ public class KnoxCollector extends Collector {
 
         @Override
         public Boolean call() {
+            setLabelStatus(Status.UNKNOWN); // Reset label state, as actions get reused
             return perform();
         }
 
@@ -457,11 +458,13 @@ public class KnoxCollector extends Collector {
                         if (resultSet.next()) {
                             setLabelStatus(Status.SUCCESS);
                             return true;
-                        } else if (LOGGER.isDebugEnabled()) {
-                            LOGGER.debug("No Hive ResultSet.next() to {} using query {} and user {}",
-                                    jdbcUrl, query, username);
+                        } else {
+                            if (LOGGER.isDebugEnabled()) {
+                                LOGGER.debug("No Hive ResultSet.next() to {} using query {} and user {}",
+                                        jdbcUrl, query, username);
+                            }
+                            setLabelStatus(Status.ERROR_OTHER);
                         }
-                        setLabelStatus(Status.ERROR_OTHER);
                     }
                 }
             } catch (SQLException | NoClassDefFoundError e) {
