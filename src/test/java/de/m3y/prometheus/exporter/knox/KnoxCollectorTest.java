@@ -26,25 +26,25 @@ public class KnoxCollectorTest {
         knoxCollector.collect();
         knoxCollector.collect();
 
-        assertThat(getMetricFamilySamples(knoxCollector.collect(), "knox_exporter_config_reloads_total"))
+        assertThat(getMetricFamilySamples(knoxCollector.collect(), "knox_exporter_config_reloads"))
                 .hasTypeOfCounter()
                 .hasSampleValue(0.0);
 
         // Force reloads
         modified.set(true);
 
-        assertThat(getMetricFamilySamples(knoxCollector.collect(),"knox_exporter_config_reloads_total"))
+        assertThat(getMetricFamilySamples(knoxCollector.collect(),"knox_exporter_config_reloads"))
                 .hasTypeOfCounter()
                 .hasSampleValue(1.0); // Another inc as config flagged as modified
 
 
-        assertThat(getMetricFamilySamples(knoxCollector.collect(),"knox_exporter_config_reloads_total"))
+        assertThat(getMetricFamilySamples(knoxCollector.collect(),"knox_exporter_config_reloads"))
                 .hasTypeOfCounter()
                 .hasSampleValue(2.0); // Another inc as config flagged as modified
 
         modified.set(false);
 
-        assertThat(getMetricFamilySamples(knoxCollector.collect(),"knox_exporter_config_reloads_total"))
+        assertThat(getMetricFamilySamples(knoxCollector.collect(),"knox_exporter_config_reloads"))
                 .hasTypeOfCounter()
                 .hasSampleValue(2.0); // No increment
     }
