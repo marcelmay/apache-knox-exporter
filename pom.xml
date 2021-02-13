@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>de.m3y.prometheus.exporter.knox</groupId>
@@ -8,7 +9,8 @@
     <packaging>jar</packaging>
     <name>Prometheus blackbox exporter for Apache Knox</name>
 
-    <description>The Prometheus blackbox exporter samples Apache Knox WebHdfs/HBase/Hive endpoints collecting error and duration metrics.
+    <description>The Prometheus blackbox exporter samples Apache Knox WebHdfs/HBase/Hive endpoints collecting error and
+        duration metrics.
     </description>
     <url>https://github.com/marcelmay/apacke-knox-exporter.git</url>
 
@@ -49,10 +51,6 @@
         <maven.build.timestamp.format>yyyy-MM-dd/HH:mm</maven.build.timestamp.format>
         <exporter.build.timestamp>${maven.build.timestamp}</exporter.build.timestamp>
     </properties>
-
-    <prerequisites> <!-- For version:display-plugin-updates -->
-        <maven>3.6</maven>
-    </prerequisites>
 
     <dependencies>
         <!-- Own -->
@@ -362,6 +360,25 @@
                     <tagNameFormat>release-@{project.version}</tagNameFormat>
                     <pushChanges>false</pushChanges>
                 </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.0.0-M3</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.6</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
